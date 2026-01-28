@@ -1,0 +1,110 @@
+name: Backlog Item (Core Feature / User Story / FR)
+description: Use this to create backlog items for M1. Includes priority + acceptance criteria + traceability IDs.
+title: "[ID] <short title>"
+labels: ["backlog"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Fill this form to match the assignment requirements:
+        - Every item must have an ID, priority, and acceptance criteria.
+        - User Story items must use the user story format.
+        - Link subissues to a parent Core Feature using "Parent Core Feature ID".
+
+  - type: dropdown
+    id: item_type
+    attributes:
+      label: Backlog Item Type
+      description: Choose what you are creating.
+      options:
+        - Core Feature (FeatX)
+        - User Story (FeatX-USn)
+        - Functional Requirement (FeatX-FRn)
+    validations:
+      required: true
+
+  - type: input
+    id: correct_id
+    attributes:
+      label: Correct ID (required)
+      description: Examples: Feat4 | Feat4-US1 | Feat4-FR6
+      placeholder: "FeatX / FeatX-USn / FeatX-FRn"
+    validations:
+      required: true
+
+  - type: input
+    id: parent_id
+    attributes:
+      label: Parent Core Feature ID (for subissues)
+      description: Required for User Story / FR items (example: Feat4). Leave blank ONLY if this is a Core Feature issue.
+      placeholder: "FeatX"
+    validations:
+      required: false
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority (required)
+      description: Must be set for every backlog item.
+      options:
+        - P0 - Must have (core flow)
+        - P1 - Should have (important)
+        - P2 - Could have (nice to have)
+        - P3 - Optional (stretch)
+    validations:
+      required: true
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: One short paragraph describing what this item delivers.
+      placeholder: "Describe the goal and scope. Keep it implementation-neutral."
+    validations:
+      required: true
+
+  - type: textarea
+    id: user_story
+    attributes:
+      label: User Story (ONLY if item type is User Story)
+      description: Must use the user story format exactly.
+      placeholder: "As a <role>, I want <capability>, so that <benefit>."
+    validations:
+      required: false
+
+  - type: textarea
+    id: fr_refs
+    attributes:
+      label: FR IDs covered (optional but recommended)
+      description: List all FR IDs this issue covers, one per line (for Core Feature issues) or just itself (for FR issues).
+      placeholder: |
+        Feat4-FR1
+        Feat4-FR2
+        Feat4-FR6
+    validations:
+      required: false
+
+  - type: textarea
+    id: us_refs
+    attributes:
+      label: User Story IDs covered (optional but recommended)
+      description: List all US IDs this issue covers, one per line (for Core Feature issues) or just itself (for US issues).
+      placeholder: |
+        Feat4-US1
+        Feat4-US2
+    validations:
+      required: false
+
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: Acceptance Criteria (required)
+      description: Must be testable/verifiable. Prefer bullet points with objective checks.
+      placeholder: |
+        - Given ..., when ..., then ...
+        - API returns 200/401/403/400 appropriately
+        - Data scope restrictions enforced
+    validations:
+      required: true
+
