@@ -28,7 +28,7 @@ body:
     id: correct_id
     attributes:
       label: Correct ID (required)
-      description: Examples: Feat4 | Feat4-US1 | Feat4-FR6
+      description: "Examples: Feat4 | Feat4-US1 | Feat4-FR6"
       placeholder: "FeatX / FeatX-USn / FeatX-FRn"
     validations:
       required: true
@@ -37,7 +37,7 @@ body:
     id: parent_id
     attributes:
       label: Parent Core Feature ID (for subissues)
-      description: Required for User Story / FR items (example: Feat4). Leave blank ONLY if this is a Core Feature issue.
+      description: "Required for User Story / FR items (example: Feat4). Leave blank ONLY if this is a Core Feature issue."
       placeholder: "FeatX"
     validations:
       required: false
@@ -107,4 +107,3 @@ body:
         - Data scope restrictions enforced
     validations:
       required: true
-
