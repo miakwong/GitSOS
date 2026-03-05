@@ -10,7 +10,5 @@ source = ["app"]
 omit = [
     "tests/*", 
     "**/__init__.py", 
-    "app/main.py",
-    "app/routers/*",      
-    "app/repositories/*" 
+    "app/main.py"
 ]

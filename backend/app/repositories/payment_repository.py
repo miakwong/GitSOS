@@ -65,3 +65,14 @@ def get_by_id(payment_id: UUID) -> Optional[PaymentRecord]:
             return _dict_to_record(data)
     return None
 
+def get_by_order_id(order_id: UUID) -> Optional[PaymentRecord]:
+    """Find a payment record by its associated order_id. Returns None if not found."""
+    for data in _load():
+        if data["order_id"] == str(order_id):
+            return _dict_to_record(data)
+    return None
+
+
+def list_all() -> list[PaymentRecord]:
+    """Return all payment records. Used by admin endpoints."""
+    return [_dict_to_record(data) for data in _load()]

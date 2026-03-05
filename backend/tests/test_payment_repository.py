@@ -63,3 +63,42 @@ def test_get_by_id_found():
 
 def test_get_by_id_not_found():
     assert repo.get_by_id(uuid.uuid4()) is None
+
+# get_by_order_id
+
+def test_get_by_order_id_found():
+    r = make_record()
+    repo.create(r)
+    result = repo.get_by_order_id(r.order_id)
+    assert result.order_id == r.order_id
+
+
+def test_get_by_order_id_not_found():
+    assert repo.get_by_order_id(uuid.uuid4()) is None
+
+
+def test_get_by_order_id_correct_among_multiple():
+    r1, r2 = make_record(), make_record()
+    repo.create(r1)
+    repo.create(r2)
+    result = repo.get_by_order_id(r2.order_id)
+    assert result.payment_id == r2.payment_id
+
+
+# list_all
+
+def test_list_all_empty():
+    assert repo.list_all() == []
+
+
+def test_list_all_returns_all():
+    repo.create(make_record())
+    repo.create(make_record())
+    assert len(repo.list_all()) == 2
+
+
+def test_list_all_returns_paymentrecord_instances():
+    repo.create(make_record())
+    assert all(isinstance(r, PaymentRecord) for r in repo.list_all())
+
+
