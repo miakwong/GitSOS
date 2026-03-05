@@ -4,9 +4,9 @@ on:
   push:
     branches: 
       - main
-      - [cite_start]"feat/**"   # e.g. feat7/schemas-and-constants 
-      - [cite_start]"chore/**"  # e.g. chore/update-dependencies
-      - [cite_start]"fix/**"    # e.g. fix/broken-link
+      - "feat/**"   # e.g. feat7/schemas-and-constants 
+      - "chore/**"  # e.g. chore/update-dependencies
+      - "fix/**"    # e.g. fix/broken-link
   pull_request:
     branches: [ "main" ]
 
