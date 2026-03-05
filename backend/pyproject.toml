@@ -1,10 +1,16 @@
-# Auto pytest running setting
+[tool.pytest.ini_options]
 addopts = "--cov=app --cov-report=term-missing --cov-report=html"
 testpaths = ["tests"]
 python_files = "test_*.py"
 asyncio_mode = "auto"
+pythonpath = ["."]
 
 [tool.coverage.run]
 source = ["app"]
-# Ignore unrelated files
-omit = ["tests/*", "**/__init__.py", "app/main.py"]
+omit = [
+    "tests/*", 
+    "**/__init__.py", 
+    "app/main.py",
+    "app/routers/*",      
+    "app/repositories/*" 
+]
