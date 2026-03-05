@@ -6,12 +6,12 @@ Role = Literal["customer", "owner", "admin"]
 
 class UserCreate(BaseModel):
     email: EmailStr
-    password: str = Field(..., min_length=6, max_length=72)
+    password: str = Field(min_length=6, max_length=72)
     role: Role = "customer"
 
 class UserLogin(BaseModel):
     email: EmailStr
-    password: str 
+    password: str = Field(min_length=6, max_length=72)
 
 class UserPublic(BaseModel):
     id: UUID
