@@ -24,10 +24,10 @@ class AuthService:
         self.pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
     def hash_password(self, password: str) -> str:
-        return self.pwd_context.hash(password)
-
+        return self.pwd_context.hash(password[:72])
+    
     def verify_password(self, plain_password: str, password_hash: str) -> bool:
-        return self.pwd_context.verify(plain_password, password_hash)
+        return self.pwd_context.verify(plain_password[:72], password_hash)
 
     def create_access_token(self, user_id: UUID, role: str) -> str:
         now = datetime.now(timezone.utc)
