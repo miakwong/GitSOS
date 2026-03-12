@@ -3,10 +3,11 @@ from typing import Optional
 from uuid import UUID, uuid4
 
 import jwt
+from app.repositories.user_repository import UserRepository
+from app.schemas.user import UserCreate, UserInDB, UserLogin
 from passlib.context import CryptContext
 
-from app.repositories.user_repository import UserRepository
-from app.schemas.user import UserCreate, UserLogin, UserInDB
+TOKEN_BLACKLIST: set[str] = set()
 
 
 class AuthService:
@@ -29,7 +30,9 @@ class AuthService:
     def verify_password(self, plain_password: str, password_hash: str) -> bool:
         return self.pwd_context.verify(plain_password[:72], password_hash)
 
-    def create_access_token(self, user_id: UUID, role: str) -> str:
+    def create_access_token(
+        self, user_id: UUID, role: str, restaurant_id: Optional[int] = None
+    ) -> str:
         now = datetime.now(timezone.utc)
         exp = now + timedelta(minutes=self.access_token_minutes)
         payload = {
@@ -37,6 +40,8 @@ class AuthService:
             "role": role,
             "exp": exp,
         }
+        if restaurant_id is not None:
+            payload["restaurant_id"] = restaurant_id
         return jwt.encode(payload, self.secret_key, algorithm=self.algorithm)
 
     def register_user(self, user_create: UserCreate) -> UserInDB:
@@ -49,6 +54,7 @@ class AuthService:
             email=user_create.email,
             role=user_create.role,
             password_hash=self.hash_password(user_create.password),
+            restaurant_id=user_create.restaurant_id,
         )
 
         return self.user_repo.create_user(new_user)
@@ -62,9 +68,18 @@ class AuthService:
         if not self.verify_password(user_login.password, user.password_hash):
             raise PermissionError("Invalid credentials")
 
-        return self.create_access_token(user.id, user.role)
+        return self.create_access_token(user.id, user.role, user.restaurant_id)
+
+    def logout_token(self, token: str) -> None:
+        TOKEN_BLACKLIST.add(token)
+
+    def is_token_invalidated(self, token: str) -> bool:
+        return token in TOKEN_BLACKLIST
 
     def verify_token(self, token: str) -> Optional[str]:
+        if token in TOKEN_BLACKLIST:
+            return None
+
         try:
             payload = jwt.decode(token, self.secret_key, algorithms=[self.algorithm])
             return payload.get("sub")
