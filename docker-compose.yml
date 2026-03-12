@@ -1,12 +1,12 @@
 services:
   backend:
     build:
-      context: ./gitsos_backend
+      context: ./backend
       dockerfile: Dockerfile
     ports:
       - "8000:8000"
     volumes:
-      - ./gitsos_backend/data:/app/data
+      - ./backend/app/data:/app/data
     environment:
       - ENVIRONMENT=development
     restart: unless-stopped
