@@ -69,7 +69,7 @@ def test_payment_record_rejects_negative_amount():
 
 def test_payment_record_created_at_mocked():
     with patch("app.schemas.payment.datetime") as mock_dt:
-        mock_dt.utcnow.return_value.isoformat.return_value = FIXED_TIME
+        mock_dt.now.return_value.isoformat.return_value = FIXED_TIME
         record = _make_record()
 
     assert record.created_at == FIXED_TIME
