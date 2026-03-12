@@ -1,18 +1,19 @@
 from pathlib import Path
 from uuid import UUID
 
-from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
 import jwt
-
 from app.repositories.user_repository import UserRepository
 from app.schemas.user import UserInDB
 from app.services.auth_service import AuthService
+from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
 
 SECRET_KEY = "dev-secret-key-for-gitsos-project-authentication-12345"
 ALGORITHM = "HS256"
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+
+TOKEN_BLACKLIST: set[str] = set()
 
 
 def get_user_repo() -> UserRepository:
@@ -29,8 +30,10 @@ def get_auth_service(
         algorithm=ALGORITHM,
     )
 
+
 def get_current_token(token: str = Depends(oauth2_scheme)) -> str:
     return token
+
 
 def get_current_user(
     token: str = Depends(oauth2_scheme),
@@ -41,7 +44,6 @@ def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token has been invalidated",
         )
-    
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         user_id = payload.get("sub")
