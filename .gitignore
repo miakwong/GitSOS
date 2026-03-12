@@ -10,6 +10,8 @@ venv/
 backend/.pytest_cache/
 backend/htmlcov/
 backend/.coverage
+.pytest_cache/
+.ruff_cache/
 
 # System files
 .DS_Store
