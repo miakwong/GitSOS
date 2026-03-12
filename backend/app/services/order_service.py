@@ -72,6 +72,24 @@ class OrderService:
         all_orders = self.order_repo.get_all_orders()
         return [o for o in all_orders if o.customer_id == customer_id]
 
+    def get_orders_for_owner(self, rest_id: int) -> list[Order]:
+        return self.order_repo.get_orders_by_restaurant_id(rest_id)
+
+    def get_order_for_owner(self, order_id: str, rest_id: int) -> Order:
+        order = self.order_repo.get_order_by_id(order_id)
+        if not order:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Order with ID '{order_id}' not found",
+            )
+        # make sure order belongs to this owner's restaurant
+        if order.restaurant_id != rest_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied: this order does not belong to your restaurant",
+            )
+        return order
+
     # Validate ownership - customer can only modify their own orders
     def _validate_ownership(self, order: Order, customer_id: str) -> None:
         if order.customer_id != customer_id:

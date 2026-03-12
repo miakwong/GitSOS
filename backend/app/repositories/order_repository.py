@@ -72,6 +72,10 @@ class OrderRepository:
         orders = self._load_orders()
         return [Order(**o) for o in orders]
 
+    def get_orders_by_restaurant_id(self, rest_id: int) -> list[Order]:
+        orders = self._load_orders()
+        return [Order(**o) for o in orders if o.get("restaurant_id") == rest_id]
+
     # Update a system order by ID
     def update_order(self, order_id: str, update_data: OrderUpdate) -> Optional[Order]:
         orders = self._load_orders()
