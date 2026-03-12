@@ -1,0 +1,44 @@
+repos:
+  # 1. General-purpose hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace        # delete trailing whitespace
+      - id: end-of-file-fixer          # ensure files end with a newline
+      - id: check-yaml                 # check YAML syntax
+      - id: check-json                 # check JSON syntax
+      - id: check-merge-conflict       # check for merge conflict markers
+      - id: check-added-large-files    # prevent committing large files (>500KB)
+        args: ["--maxkb=500"]
+      - id: debug-statements           # check for breakpoint() / pdb
+
+  # 2. Python formatting
+  - repo: https://github.com/psf/black
+    rev: 25.1.0
+    hooks:
+      - id: black
+        language_version: python3.13
+
+  # 3. Import sorting
+  - repo: https://github.com/pycqa/isort
+    rev: 6.0.1
+    hooks:
+      - id: isort
+        args: ["--profile", "black"]
+
+  # 4. Linting and auto-fixing
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.11.2
+    hooks:
+      - id: ruff
+        args: ["--fix"]
+
+  # 5. pytest No coverage
+  - repo: local
+    hooks:
+      - id: pytest
+        name: pytest
+        entry: bash -c "cd backend && pytest tests/ -x -q --no-header --no-cov"
+        language: system
+        pass_filenames: false
+        always_run: true

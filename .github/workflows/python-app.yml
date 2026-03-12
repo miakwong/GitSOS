@@ -2,9 +2,9 @@ name: GitSOS Backend CI
 
 on:
   push:
-    branches: 
+    branches:
       - main
-      - "feat/**"   # e.g. feat/7schemas-and-constants 
+      - "feat/**"   # e.g. feat/7schemas-and-constants
       - "chore/**"  # e.g. chore/update-dependencies
       - "fix/**"    # e.g. fix/broken-link
   pull_request:
@@ -27,6 +27,9 @@ jobs:
         cd backend
         python -m pip install --upgrade pip
         pip install -r requirements.txt
+
+    - name: Create mock CSV for CI
+      run: python backend/scripts/create_mock_csv.py
 
     - name: Run tests with coverage
       run: |

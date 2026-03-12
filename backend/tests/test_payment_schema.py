@@ -1,41 +1,45 @@
-#Tests for app/schemas/payment.py
-import pytest
-from uuid import uuid4
+# Tests for app/schemas/payment.py
 from unittest.mock import patch
+from uuid import uuid4
 
-from app.schemas.payment import PaymentCreate, PaymentRecord, PaymentOut
+import pytest
 from app.schemas.constants import (
+    PAYMENT_STATUS_FAILED,
     PAYMENT_STATUS_PENDING,
     PAYMENT_STATUS_SUCCESS,
-    PAYMENT_STATUS_FAILED,
     VALID_PAYMENT_STATUSES,
 )
+from app.schemas.payment import PaymentCreate, PaymentOut, PaymentRecord
 
 FIXED_TIME = "2025-01-01T00:00:00"
 
-# Shared test UUIDs 
+# Shared test UUIDs
 MOCK_USER_ID = uuid4()
 MOCK_ORDER_ID = uuid4()
 MOCK_PAYMENT_ID = uuid4()
 
 # PaymentCreate Tests
 
+
 def test_payment_create_valid_order_id():
     p = PaymentCreate(order_id=MOCK_ORDER_ID)
     assert p.order_id == MOCK_ORDER_ID
+
 
 def test_payment_create_requires_order_id():
     with pytest.raises(Exception):
         PaymentCreate()
 
+
 # PaymentRecord Tests
+
 
 def _make_record(**overrides):
     """Helper: build a minimal valid PaymentRecord."""
     defaults = dict(
         payment_id=MOCK_PAYMENT_ID,
         order_id=MOCK_ORDER_ID,
-        customer_id=MOCK_USER_ID,   # customer_id = user UUID
+        customer_id=MOCK_USER_ID,  # customer_id = user UUID
         amount=100.0,
     )
     return PaymentRecord(**{**defaults, **overrides})
@@ -80,7 +84,7 @@ def test_payment_record_updated_at_defaults_to_none():
     assert record.updated_at is None
 
 
-# PaymentOut Tests 
+# PaymentOut Tests
 def test_payment_out_from_record_converts_uuids_to_str():
     record = _make_record(status=PAYMENT_STATUS_SUCCESS)
     out = PaymentOut.from_record(record)
