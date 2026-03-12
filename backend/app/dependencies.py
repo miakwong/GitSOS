@@ -19,9 +19,7 @@ def get_user_repo() -> UserRepository:
     return UserRepository(users_file)
 
 
-def get_auth_service(
-    user_repo: UserRepository = Depends(get_user_repo),
-) -> AuthService:
+def get_auth_service(user_repo: UserRepository = Depends(get_user_repo)) -> AuthService:
     return AuthService(
         user_repo=user_repo,
         secret_key=SECRET_KEY,
@@ -46,18 +44,27 @@ def _decode_token(token: str) -> dict:
 def get_current_user(
     token: str = Depends(oauth2_scheme),
     user_repo: UserRepository = Depends(get_user_repo),
-):
+) -> UserInDB:
+    # block logged out tokens
     if token in TOKEN_BLACKLIST:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token has been invalidated",
         )
     payload = _decode_token(token)
-    if not payload.get("sub"):
+    user_id = payload.get("sub")
+    if not user_id:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token",
         )
+    user = user_repo.get_user_by_id(UUID(user_id))
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found",
+        )
+    return user
 
 
 def get_current_user_full(
@@ -94,3 +101,16 @@ def get_current_owner(
             detail="Owner access required",
         )
     return (UUID(payload["sub"]), int(payload.get("restaurant_id", 0)))
+
+
+# returns a dependency that checks if the user has the required role
+def require_role(*roles: str):
+    def role_checker(current_user: UserInDB = Depends(get_current_user)) -> UserInDB:
+        if current_user.role not in roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied: insufficient permissions",
+            )
+        return current_user
+
+    return role_checker

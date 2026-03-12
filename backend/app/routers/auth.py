@@ -1,4 +1,13 @@
-from app.dependencies import get_auth_service, get_current_token, get_current_user_full
+from typing import List
+
+from app.dependencies import (
+    get_auth_service,
+    get_current_token,
+    get_current_user,
+    get_user_repo,
+    require_role,
+)
+from app.repositories.user_repository import UserRepository
 from app.schemas.user import TokenResponse, UserCreate, UserLogin, UserPublic
 from app.services.auth_service import AuthService
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -36,9 +45,21 @@ def logout(
 
 
 @router.get("/me", response_model=UserPublic)
-def me(current_user=Depends(get_current_user_full)):
+def me(current_user=Depends(get_current_user)):
     return UserPublic(
         id=current_user.id,
         email=current_user.email,
         role=current_user.role,
     )
+
+
+# admin only - returns all users and their roles
+@router.get(
+    "/admin/users",
+    response_model=List[UserPublic],
+    dependencies=[Depends(require_role("admin"))],
+)
+def admin_list_users(user_repo: UserRepository = Depends(get_user_repo)):
+    return [
+        UserPublic(id=u.id, email=u.email, role=u.role) for u in user_repo.list_users()
+    ]
