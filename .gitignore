@@ -13,4 +13,4 @@ backend/.coverage
 # System files
 .DS_Store
 # Data files
-food_delivery.csv
+backend/app/data/food_delivery.csv
