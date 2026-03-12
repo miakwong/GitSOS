@@ -7,7 +7,7 @@ from fastapi.security import OAuth2PasswordBearer
 import jwt
 
 from app.repositories.user_repository import UserRepository
-from app.services.auth_service import AuthService
+from app.services.auth_service import AuthService, TOKEN_BLACKLIST
 
 
 SECRET_KEY = "dev-secret-key-for-gitsos-project-authentication-12345"
@@ -28,15 +28,28 @@ def get_auth_service(user_repo: UserRepository = Depends(get_user_repo)) -> Auth
         algorithm=ALGORITHM,
     )
 
+def get_current_token(token: str = Depends(oauth2_scheme)) -> str:
+    return token
 
 def get_current_user(
     token: str = Depends(oauth2_scheme),
     user_repo: UserRepository = Depends(get_user_repo),
-) -> UUID:
+):
+    if token in TOKEN_BLACKLIST:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has been invalidated",
+        )
+    
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        return UUID(payload["sub"])
-    except Exception:
+        user_id = payload.get("sub")
+        if not user_id:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token",
+            )
+    except jwt.PyJWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired token",
@@ -65,3 +78,12 @@ def get_current_owner(
             detail="Owner account has no associated restaurant",
         )
     return UUID(payload["sub"]), rest_id
+    
+    user = user_repo.get_user_by_id(UUID(user_id))
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found",
+        )
+    
+    return user

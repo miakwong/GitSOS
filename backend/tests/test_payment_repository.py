@@ -1,12 +1,12 @@
 # tests/test_payment_repository.py
 
 import uuid
-import pytest
 from unittest.mock import patch
 
-from app.schemas.payment import PaymentRecord
-from app.schemas.constants import PAYMENT_STATUS_PENDING
 import app.repositories.payment_repository as repo
+import pytest
+from app.schemas.constants import PAYMENT_STATUS_PENDING
+from app.schemas.payment import PaymentRecord
 
 
 @pytest.fixture(autouse=True)
@@ -28,6 +28,7 @@ def make_record(**kwargs) -> PaymentRecord:
 
 
 # create
+
 
 def test_create_returns_record():
     r = make_record()
@@ -52,7 +53,9 @@ def test_create_appends_not_overwrites():
     assert repo.get_by_id(r1.payment_id) is not None
     assert repo.get_by_id(r2.payment_id) is not None
 
-# get_by_id 
+
+# get_by_id
+
 
 def test_get_by_id_found():
     r = make_record()
@@ -64,7 +67,9 @@ def test_get_by_id_found():
 def test_get_by_id_not_found():
     assert repo.get_by_id(uuid.uuid4()) is None
 
+
 # get_by_order_id
+
 
 def test_get_by_order_id_found():
     r = make_record()
@@ -87,6 +92,7 @@ def test_get_by_order_id_correct_among_multiple():
 
 # list_all
 
+
 def test_list_all_empty():
     assert repo.list_all() == []
 
@@ -100,5 +106,3 @@ def test_list_all_returns_all():
 def test_list_all_returns_paymentrecord_instances():
     repo.create(make_record())
     assert all(isinstance(r, PaymentRecord) for r in repo.list_all())
-
-
