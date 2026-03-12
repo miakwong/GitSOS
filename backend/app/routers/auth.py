@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from app.dependencies import get_auth_service
+from app.dependencies import get_auth_service, get_current_user, get_current_token
 from app.schemas.user import UserCreate, UserLogin, UserPublic, TokenResponse
 from app.services.auth_service import AuthService
 
@@ -23,3 +23,19 @@ def login(payload: UserLogin, auth: AuthService = Depends(get_auth_service)):
         return TokenResponse(access_token=token, token_type="bearer")
     except PermissionError:
         raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+@router.post("/logout")
+def logout(
+    token: str = Depends(get_current_token),
+    auth: AuthService = Depends(get_auth_service),
+):
+    auth.logout_token(token)
+    return {"message": "Logged out successfully"}
+
+@router.get("/me", response_model=UserPublic)
+def me(current_user = Depends(get_current_user)):
+    return UserPublic(
+        id=current_user.id, 
+        email=current_user.email, 
+        role=current_user.role,
+    )

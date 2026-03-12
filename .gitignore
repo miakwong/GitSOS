@@ -1,5 +1,6 @@
 # Python VE
 backend/venv/
+venv/
 
 # Python cache
 **/__pycache__/
