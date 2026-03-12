@@ -3,10 +3,18 @@ from uuid import UUID
 
 from fastapi import APIRouter, HTTPException
 
-from app.schemas.payment import PaymentOut
+from app.schemas.payment import PaymentCreate, PaymentOut
 from app.services import payment_service
 
 router = APIRouter(prefix="/payments", tags=["payments"])
+
+
+@router.post("/", response_model=PaymentOut, status_code=201)
+def process_payment(payload: PaymentCreate) -> PaymentOut:
+    try:
+        return payment_service.process_payment(payload)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.get("/{payment_id}", response_model=PaymentOut)

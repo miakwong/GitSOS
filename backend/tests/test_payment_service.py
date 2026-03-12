@@ -1,11 +1,10 @@
-
 import uuid
 from unittest.mock import patch
 
 import pytest
 
 from app.schemas.constants import PAYMENT_STATUS_SUCCESS
-from app.schemas.payment import PaymentOut, PaymentRecord
+from app.schemas.payment import PaymentCreate, PaymentOut, PaymentRecord
 import app.services.payment_service as service
 
 
@@ -26,6 +25,10 @@ def _make_record(**overrides) -> PaymentRecord:
     return PaymentRecord(**base)
 
 
+def _payload() -> PaymentCreate:
+    return PaymentCreate(order_id=ORDER_ID)
+
+
 @pytest.fixture(autouse=True)
 def mock_repo():
     with patch("app.services.payment_service.payment_repository") as mock:
@@ -38,41 +41,41 @@ def mock_repo():
 # process_payment
 
 def test_process_payment_returns_payment_out(mock_repo):
-    mock_repo.create.side_effect = lambda r: r
-    result = service.process_payment(ORDER_ID, CUSTOMER_ID)
+    result = service.process_payment(_payload())
     assert isinstance(result, PaymentOut)
 
 
 def test_process_payment_status_is_success(mock_repo):
-    result = service.process_payment(ORDER_ID, CUSTOMER_ID)
+    result = service.process_payment(_payload())
     assert result.status == PAYMENT_STATUS_SUCCESS
 
 
 def test_process_payment_order_id_matches(mock_repo):
-    result = service.process_payment(ORDER_ID, CUSTOMER_ID)
+    result = service.process_payment(_payload())
     assert result.order_id == str(ORDER_ID)
 
 
-def test_process_payment_customer_id_matches(mock_repo):
-    result = service.process_payment(ORDER_ID, CUSTOMER_ID)
-    assert result.customer_id == str(CUSTOMER_ID)
+def test_process_payment_customer_id_is_uuid(mock_repo):
+    # customer_id is stubbed — just verify it's a valid UUID string
+    result = service.process_payment(_payload())
+    assert uuid.UUID(result.customer_id)
 
 
 def test_process_payment_calls_repository_create(mock_repo):
-    service.process_payment(ORDER_ID, CUSTOMER_ID)
+    service.process_payment(_payload())
     mock_repo.create.assert_called_once()
 
 
 def test_process_payment_raises_if_payment_exists(mock_repo):
     mock_repo.get_by_order_id.return_value = _make_record()
     with pytest.raises(service.PaymentError):
-        service.process_payment(ORDER_ID, CUSTOMER_ID)
+        service.process_payment(_payload())
 
 
 def test_process_payment_no_duplicate_create_when_exists(mock_repo):
     mock_repo.get_by_order_id.return_value = _make_record()
     with pytest.raises(service.PaymentError):
-        service.process_payment(ORDER_ID, CUSTOMER_ID)
+        service.process_payment(_payload())
     mock_repo.create.assert_not_called()
 
 

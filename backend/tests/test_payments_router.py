@@ -55,3 +55,17 @@ def test_get_payment_by_order_not_found(mock_service):
     mock_service.get_payment_by_order.return_value = None
     response = client.get(f"/payments/order/{uuid4()}")
     assert response.status_code == 404
+
+
+def test_process_payment_success(mock_service):
+    mock_service.process_payment.return_value = MOCK_PAYMENT_OUT
+    response = client.post("/payments/", json={"order_id": str(ORDER_ID)})
+    assert response.status_code == 201
+    assert response.json()["order_id"] == str(ORDER_ID)
+
+
+def test_process_payment_duplicate(mock_service):
+    mock_service.process_payment.side_effect = ValueError("Payment already exists")
+    response = client.post("/payments/", json={"order_id": str(ORDER_ID)})
+    assert response.status_code == 400
+    assert "already exists" in response.json()["detail"]
