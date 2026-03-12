@@ -4,7 +4,7 @@ from uuid import UUID
 import jwt
 from app.repositories.user_repository import UserRepository
 from app.schemas.user import UserInDB
-from app.services.auth_service import AuthService
+from app.services.auth_service import TOKEN_BLACKLIST, AuthService
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 
@@ -12,8 +12,6 @@ SECRET_KEY = "dev-secret-key-for-gitsos-project-authentication-12345"
 ALGORITHM = "HS256"
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
-
-TOKEN_BLACKLIST: set[str] = set()
 
 
 def get_user_repo() -> UserRepository:
