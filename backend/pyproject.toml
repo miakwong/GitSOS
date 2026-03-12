@@ -8,7 +8,7 @@ pythonpath = ["."]
 [tool.coverage.run]
 source = ["app"]
 omit = [
-    "tests/*", 
-    "**/__init__.py", 
+    "tests/*",
+    "**/__init__.py",
     "app/main.py"
 ]

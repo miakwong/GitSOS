@@ -2,9 +2,9 @@ name: GitSOS Backend CI
 
 on:
   push:
-    branches: 
+    branches:
       - main
-      - "feat/**"   # e.g. feat7/schemas-and-constants 
+      - "feat/**"   # e.g. feat7/schemas-and-constants
       - "chore/**"  # e.g. chore/update-dependencies
       - "fix/**"    # e.g. fix/broken-link
   pull_request:
