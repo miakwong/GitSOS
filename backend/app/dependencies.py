@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Optional
 from uuid import UUID
 
 from fastapi import Depends, HTTPException, status
@@ -40,3 +41,27 @@ def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired token",
         )
+
+
+def get_current_owner(
+    token: str = Depends(oauth2_scheme),
+) -> tuple[UUID, int]:
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired token",
+        )
+    if payload.get("role") != "owner":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access restricted to restaurant owners",
+        )
+    rest_id: Optional[int] = payload.get("restaurant_id")
+    if rest_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Owner account has no associated restaurant",
+        )
+    return UUID(payload["sub"]), rest_id
