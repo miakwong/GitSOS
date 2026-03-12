@@ -13,5 +13,5 @@ backend/.coverage
 # System files
 .DS_Store
 
-# Data files
+# Database files
 backend/app/data/*.csv
