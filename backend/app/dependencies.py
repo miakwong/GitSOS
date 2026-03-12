@@ -9,6 +9,9 @@ from app.repositories.user_repository import UserRepository
 from app.services.auth_service import AuthService
 
 
+SECRET_KEY = "dev-secret-key-for-gitsos-project-authentication-12345"
+ALGORITHM = "HS256"
+
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 
@@ -18,7 +21,11 @@ def get_user_repo() -> UserRepository:
 
 
 def get_auth_service(user_repo: UserRepository = Depends(get_user_repo)) -> AuthService:
-    return AuthService(user_repo=user_repo, secret_key="CHANGE_ME")
+    return AuthService(
+        user_repo=user_repo,
+        secret_key=SECRET_KEY,
+        algorithm=ALGORITHM,
+    )
 
 
 def get_current_user(
@@ -26,7 +33,7 @@ def get_current_user(
     user_repo: UserRepository = Depends(get_user_repo),
 ) -> UUID:
     try:
-        payload = jwt.decode(token, "CHANGE_ME", algorithms=["HS256"])
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         return UUID(payload["sub"])
     except Exception:
         raise HTTPException(
