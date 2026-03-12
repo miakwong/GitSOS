@@ -50,7 +50,7 @@ class AuthService:
     def login_user(self, user_login: UserLogin) -> str:
         user = self.user_repo.get_user_by_email(user_login.email)
         if not user or not self.verify_password(user_login.password, user.password_hash):
-            raise ValueError("Invalid credentials")
+            raise PermissionError("Invalid credentials")
 
         return self.create_access_token(user.id, user.role)
 
