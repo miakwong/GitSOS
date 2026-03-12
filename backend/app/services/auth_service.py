@@ -24,10 +24,10 @@ class AuthService:
         self.pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
     def hash_password(self, password: str) -> str:
-        return self.pwd_context.hash(password[:72])
+        return self.pwd_context.hash(password)
     
     def verify_password(self, plain_password: str, password_hash: str) -> bool:
-        return self.pwd_context.verify(plain_password[:72], password_hash)
+        return self.pwd_context.verify(plain_password, password_hash)
 
     def create_access_token(self, user_id: UUID, role: str) -> str:
         now = datetime.now(timezone.utc)
@@ -49,16 +49,14 @@ class AuthService:
 
     def login_user(self, user_login: UserLogin) -> str:
         user = self.user_repo.get_user_by_email(user_login.email)
-        if not user:
-            raise PermissionError("Invalid credentials")
-
-        if not self.verify_password(user_login.password, user.password_hash):
-            raise PermissionError("Invalid credentials")
+        if not user or not self.verify_password(user_login.password, user.password_hash):
+            raise ValueError("Invalid credentials")
 
         return self.create_access_token(user.id, user.role)
 
-    def verify_token(self, token: str) -> Optional[dict]:
+    def verify_token(self, token: str) -> Optional[str]:
         try:
-            return jwt.decode(token, self.secret_key, algorithms=[self.algorithm])
+            payload = jwt.decode(token, self.secret_key, algorithms=[self.algorithm])
+            return payload.get("sub")
         except jwt.PyJWTError:
             return None
