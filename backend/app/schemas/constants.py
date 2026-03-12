@@ -1,3 +1,8 @@
+# User Roles
+ROLE_ADMIN = "admin"
+ROLE_OWNER = "owner"
+ROLE_CUSTOMER = "customer"
+
 # Payment Status
 PAYMENT_STATUS_PENDING = "Pending"
 PAYMENT_STATUS_SUCCESS = "Success"

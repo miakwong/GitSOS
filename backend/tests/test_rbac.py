@@ -1,13 +1,12 @@
-from pathlib import Path
 import tempfile
+from pathlib import Path
 
 import pytest
-from fastapi.testclient import TestClient
-
+from app.dependencies import ALGORITHM, SECRET_KEY, get_auth_service, get_user_repo
 from app.main import app
-from app.dependencies import get_auth_service, get_user_repo, SECRET_KEY, ALGORITHM
 from app.repositories.user_repository import UserRepository
-from app.services.auth_service import AuthService, TOKEN_BLACKLIST
+from app.services.auth_service import TOKEN_BLACKLIST, AuthService
+from fastapi.testclient import TestClient
 
 
 @pytest.fixture
@@ -35,7 +34,10 @@ def client():
 
 
 def _register(client, email, password="secret12", role="customer"):
-    return client.post("/auth/register", json={"email": email, "password": password, "role": role})
+    payload = {"email": email, "password": password, "role": role}
+    if role == "owner":
+        payload["restaurant_id"] = 1
+    return client.post("/auth/register", json=payload)
 
 
 def _login(client, email, password="secret12"):
