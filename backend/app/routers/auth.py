@@ -1,6 +1,9 @@
+from typing import List
+
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from app.dependencies import get_auth_service, get_current_user, get_current_token
+from app.dependencies import get_auth_service, get_current_user, get_current_token, require_role, get_user_repo
+from app.repositories.user_repository import UserRepository
 from app.schemas.user import UserCreate, UserLogin, UserPublic, TokenResponse
 from app.services.auth_service import AuthService
 
@@ -23,7 +26,7 @@ def login(payload: UserLogin, auth: AuthService = Depends(get_auth_service)):
         return TokenResponse(access_token=token, token_type="bearer")
     except PermissionError:
         raise HTTPException(status_code=401, detail="Invalid credentials")
-    
+
 @router.post("/logout")
 def logout(
     token: str = Depends(get_current_token),
@@ -35,7 +38,15 @@ def logout(
 @router.get("/me", response_model=UserPublic)
 def me(current_user = Depends(get_current_user)):
     return UserPublic(
-        id=current_user.id, 
-        email=current_user.email, 
+        id=current_user.id,
+        email=current_user.email,
         role=current_user.role,
     )
+
+# admin only - returns all users and their roles
+@router.get("/admin/users", response_model=List[UserPublic], dependencies=[Depends(require_role("admin"))])
+def admin_list_users(user_repo: UserRepository = Depends(get_user_repo)):
+    return [
+        UserPublic(id=u.id, email=u.email, role=u.role)
+        for u in user_repo.list_users()
+    ]
