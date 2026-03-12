@@ -64,6 +64,11 @@ def get_current_user_full(
     token: str = Depends(oauth2_scheme),
     user_repo: UserRepository = Depends(get_user_repo),
 ) -> UserInDB:
+    if token in TOKEN_BLACKLIST:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has been invalidated",
+        )
     payload = _decode_token(token)
     user = user_repo.get_user_by_id(UUID(payload["sub"]))
     if user is None:
@@ -77,6 +82,11 @@ def get_current_user_full(
 def get_current_owner(
     token: str = Depends(oauth2_scheme),
 ) -> tuple[UUID, int]:
+    if token in TOKEN_BLACKLIST:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has been invalidated",
+        )
     payload = _decode_token(token)
     if payload.get("role") != "owner":
         raise HTTPException(
