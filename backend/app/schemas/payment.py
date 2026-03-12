@@ -1,17 +1,18 @@
+from datetime import datetime
 from typing import Optional
 from uuid import UUID
-from pydantic import BaseModel, Field, field_validator
-from datetime import datetime
 
 from app.schemas.constants import (
-    VALID_PAYMENT_STATUSES,
     PAYMENT_STATUS_PENDING,
+    VALID_PAYMENT_STATUSES,
 )
+from pydantic import BaseModel, Field, field_validator
 
 
 # PaymentCreate
 class PaymentCreate(BaseModel):
     order_id: UUID = Field(..., description="System-created order ID (UUID)")
+
 
 # PaymentRecord
 # stored in payments.json
@@ -41,6 +42,7 @@ class PaymentRecord(BaseModel):
                 f"Invalid status '{v}'. Must be one of: {VALID_PAYMENT_STATUSES}"
             )
         return v
+
 
 # PaymentOut -- API response
 # UUID fields serialized as str for JSON
