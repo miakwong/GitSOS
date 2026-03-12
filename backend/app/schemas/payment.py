@@ -1,6 +1,8 @@
 from datetime import datetime
 from typing import Optional
 from uuid import UUID
+from pydantic import BaseModel, Field, field_validator
+from datetime import datetime, timezone
 
 from app.schemas.constants import (
     PAYMENT_STATUS_PENDING,
@@ -26,7 +28,7 @@ class PaymentRecord(BaseModel):
     )
     amount: float = Field(..., gt=0, description="Total amount charged")
     created_at: str = Field(
-        default_factory=lambda: datetime.utcnow().isoformat(),
+        default_factory=lambda: datetime.now(timezone.utc).isoformat(),
         description="ISO timestamp of payment creation",
     )
     updated_at: Optional[str] = Field(
