@@ -6,8 +6,8 @@ from fastapi.security import OAuth2PasswordBearer
 import jwt
 
 from app.repositories.user_repository import UserRepository
+from app.schemas.user import UserInDB
 from app.services.auth_service import AuthService
-
 
 SECRET_KEY = "dev-secret-key-for-gitsos-project-authentication-12345"
 ALGORITHM = "HS256"
@@ -20,7 +20,9 @@ def get_user_repo() -> UserRepository:
     return UserRepository(users_file)
 
 
-def get_auth_service(user_repo: UserRepository = Depends(get_user_repo)) -> AuthService:
+def get_auth_service(
+    user_repo: UserRepository = Depends(get_user_repo),
+) -> AuthService:
     return AuthService(
         user_repo=user_repo,
         secret_key=SECRET_KEY,
@@ -40,3 +42,24 @@ def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired token",
         )
+
+
+def get_current_user_full(
+    token: str = Depends(oauth2_scheme),
+    user_repo: UserRepository = Depends(get_user_repo),
+) -> UserInDB:
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id = UUID(payload["sub"])
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired token",
+        )
+    user = user_repo.get_user_by_id(user_id)
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found",
+        )
+    return user
