@@ -1,7 +1,6 @@
 from fastapi import FastAPI
 
 from app.routers import auth
-from routers.items import router as items_router
 
 app = FastAPI(title="GitSOS Backend")
 
@@ -17,4 +16,3 @@ def health():
 
 
 app.include_router(auth.router)
-app.include_router(items_router)
