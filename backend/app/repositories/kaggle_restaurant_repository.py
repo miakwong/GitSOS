@@ -23,10 +23,12 @@ def list_all() -> list[KaggleRestaurant]:
         rid = row["restaurant_id"]
         if rid not in seen:
             seen.add(rid)
-            restaurants.append(KaggleRestaurant(
-                restaurant_id=rid,
-                name=f"Restaurant_{rid}",
-            ))
+            restaurants.append(
+                KaggleRestaurant(
+                    restaurant_id=rid,
+                    name=f"Restaurant_{rid}",
+                )
+            )
     return restaurants
 
 

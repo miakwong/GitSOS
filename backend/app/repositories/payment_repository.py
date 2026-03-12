@@ -10,6 +10,7 @@ DATA_PATH = os.path.join(os.path.dirname(__file__), "../data/payments.json")
 
 # helpers
 
+
 def _load() -> list[dict]:
     """Load all payment records from JSON file"""
     if not os.path.exists(DATA_PATH):
@@ -64,6 +65,7 @@ def get_by_id(payment_id: UUID) -> Optional[PaymentRecord]:
         if data["payment_id"] == str(payment_id):
             return _dict_to_record(data)
     return None
+
 
 def get_by_order_id(order_id: UUID) -> Optional[PaymentRecord]:
     """Find a payment record by its associated order_id. Returns None if not found."""

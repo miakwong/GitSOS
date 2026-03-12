@@ -39,18 +39,13 @@ def _row_to_order(row: dict) -> KaggleOrder:
         delivery_time_actual=float(row["delivery_time_actual"]),
         delivery_delay=float(row["delivery_delay"]),
     )
-    
+
+
 def get_by_customer_id(customer_id: str) -> list[KaggleOrder]:
     return [
-        _row_to_order(row)
-        for row in _load_csv()
-        if row["customer_id"] == customer_id
+        _row_to_order(row) for row in _load_csv() if row["customer_id"] == customer_id
     ]
 
 
 def get_by_food_item(food_item: str) -> list[KaggleOrder]:
-    return [
-        _row_to_order(row)
-        for row in _load_csv()
-        if row["food_item"] == food_item
-    ]
+    return [_row_to_order(row) for row in _load_csv() if row["food_item"] == food_item]
