@@ -8,6 +8,7 @@ from passlib.context import CryptContext
 from app.repositories.user_repository import UserRepository
 from app.schemas.user import UserCreate, UserLogin, UserInDB
 
+TOKEN_BLACKLIST: set[str] = set()
 
 class AuthService:
     def __init__(
@@ -63,8 +64,17 @@ class AuthService:
             raise PermissionError("Invalid credentials")
 
         return self.create_access_token(user.id, user.role)
+    
+    def logout_token(self, token: str) -> None:
+        TOKEN_BLACKLIST.add(token)
+
+    def is_token_invalidated(self, token: str) -> bool:
+        return token in TOKEN_BLACKLIST
 
     def verify_token(self, token: str) -> Optional[str]:
+        if token in TOKEN_BLACKLIST:
+            return None
+        
         try:
             payload = jwt.decode(token, self.secret_key, algorithms=[self.algorithm])
             return payload.get("sub")
