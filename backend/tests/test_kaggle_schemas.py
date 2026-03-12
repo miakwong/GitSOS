@@ -1,9 +1,9 @@
 import pytest
+from app.schemas.kaggle import KaggleMenuItem, KaggleOrder, KaggleRestaurant
 from pydantic import ValidationError
 
-from app.schemas.kaggle import KaggleOrder, KaggleRestaurant, KaggleMenuItem
-
 # KaggleOrder
+
 
 class TestKaggleOrder:
 
@@ -46,6 +46,7 @@ class TestKaggleOrder:
 
 
 # KaggleRestaurant
+
 
 class TestKaggleRestaurant:
 

@@ -1,8 +1,7 @@
-
 from typing import Optional
 
-from app.schemas.kaggle import KaggleRestaurant, KaggleMenuItem
-from app.repositories import kaggle_restaurant_repository, kaggle_menu_repository
+from app.repositories import kaggle_menu_repository, kaggle_restaurant_repository
+from app.schemas.kaggle import KaggleMenuItem, KaggleRestaurant
 
 
 def list_restaurants() -> list[KaggleRestaurant]:

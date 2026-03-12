@@ -1,11 +1,9 @@
-
 import csv
-import os
-import pytest
 from unittest.mock import patch
 
-from app.schemas.kaggle import KaggleOrder
 import app.repositories.kaggle_order_repository as repo
+import pytest
+from app.schemas.kaggle import KaggleOrder
 
 # Minimal fixture CSV rows
 SAMPLE_ROWS = [
@@ -19,7 +17,9 @@ SAMPLE_ROWS = [
         "delivery_distance": "5.0",
         "delivery_time_actual": "1.0",
         "delivery_delay": "5.0",
-        "age": "25", "gender": "Male", "location": "City_1",
+        "age": "25",
+        "gender": "Male",
+        "location": "City_1",
     },
     {
         "order_id": "BBB002",
@@ -31,7 +31,9 @@ SAMPLE_ROWS = [
         "delivery_distance": "3.0",
         "delivery_time_actual": "0.5",
         "delivery_delay": "2.0",
-        "age": "30", "gender": "Female", "location": "City_2",
+        "age": "30",
+        "gender": "Female",
+        "location": "City_2",
     },
 ]
 
@@ -49,6 +51,7 @@ def mock_csv(tmp_path):
 
 
 # load_all
+
 
 def test_load_all_returns_list():
     results = repo.load_all()
@@ -72,6 +75,7 @@ def test_load_all_fields_mapped_correctly():
 
 # get_by_id
 
+
 def test_get_by_id_found():
     result = repo.get_by_id("AAA001")
     assert result is not None
@@ -86,9 +90,10 @@ def test_get_by_id_returns_correct_record():
     result = repo.get_by_id("BBB002")
     assert result.restaurant_id == "20"
     assert result.food_item == "Burger"
-    
+
 
 # get_by_customer_id
+
 
 def test_get_by_customer_id_found():
     results = repo.get_by_customer_id("abc-123")
@@ -106,6 +111,7 @@ def test_get_by_customer_id_returns_kaggle_order_instances():
 
 
 # get_by_food_item
+
 
 def test_get_by_food_item_found():
     results = repo.get_by_food_item("Pasta")
