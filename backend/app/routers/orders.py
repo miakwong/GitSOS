@@ -1,6 +1,9 @@
 # Orders router for API endpoints
-from fastapi import APIRouter, status
+from uuid import UUID
 
+from fastapi import APIRouter, Depends, status
+
+from app.dependencies import get_current_owner
 from app.schemas.order import Order, OrderCreate, OrderUpdate
 from app.services.order_service import OrderService
 
@@ -64,3 +67,28 @@ def update_order(order_id: str, customer_id: str, update_data: OrderUpdate) -> O
 )
 def cancel_order(order_id: str, customer_id: str) -> Order:
     return order_service.cancel_order(order_id, customer_id)
+
+
+@router.get(
+    "/owner/restaurant",
+    response_model=list[Order],
+    summary="Owner: list restaurant orders",
+)
+def get_owner_restaurant_orders(
+    current_owner: tuple[UUID, int] = Depends(get_current_owner),
+) -> list[Order]:
+    _, rest_id = current_owner
+    return order_service.get_orders_for_owner(rest_id)
+
+
+@router.get(
+    "/owner/restaurant/{order_id}",
+    response_model=Order,
+    summary="Owner: get single order",
+)
+def get_owner_restaurant_order(
+    order_id: str,
+    current_owner: tuple[UUID, int] = Depends(get_current_owner),
+) -> Order:
+    _, rest_id = current_owner
+    return order_service.get_order_for_owner(order_id, rest_id)
