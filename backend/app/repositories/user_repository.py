@@ -38,4 +38,4 @@ class UserRepository:
         return next((u for u in self.users if u.email.lower() == email.lower()), None)
 
     def list_users(self) -> List[UserInDB]:
-        return self.users
+        return self.users.copy()
