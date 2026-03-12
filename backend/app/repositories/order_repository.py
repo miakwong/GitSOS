@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from app.schemas.order import (
-    Order, OrderCreate, OrderStatus,
+    Order, OrderCreate, OrderUpdate, OrderStatus,
     DeliveryMethod, TrafficCondition, WeatherCondition
 )
 
@@ -71,6 +71,42 @@ class OrderRepository:
     def get_all_orders(self) -> list[Order]:
         orders = self._load_orders()
         return [Order(**o) for o in orders]
+
+    def get_orders_by_restaurant_id(self, rest_id: int) -> list[Order]:
+        orders = self._load_orders()
+        return [Order(**o) for o in orders if o.get("restaurant_id") == rest_id]
+
+    # Update a system order by ID
+    def update_order(self, order_id: str, update_data: OrderUpdate) -> Optional[Order]:
+        orders = self._load_orders()
+        for i, order in enumerate(orders):
+            if order["order_id"] == order_id:
+                # Apply updates only for non-None fields
+                if update_data.food_item is not None:
+                    orders[i]["food_item"] = update_data.food_item
+                if update_data.order_value is not None:
+                    orders[i]["order_value"] = update_data.order_value
+                if update_data.delivery_distance is not None:
+                    orders[i]["delivery_distance"] = update_data.delivery_distance
+                if update_data.delivery_method is not None:
+                    orders[i]["delivery_method"] = update_data.delivery_method.value
+                if update_data.traffic_condition is not None:
+                    orders[i]["traffic_condition"] = update_data.traffic_condition.value
+                if update_data.weather_condition is not None:
+                    orders[i]["weather_condition"] = update_data.weather_condition.value
+                self._save_orders(orders)
+                return Order(**orders[i])
+        return None
+
+    # Update order status by ID
+    def update_order_status(self, order_id: str, new_status: OrderStatus) -> Optional[Order]:
+        orders = self._load_orders()
+        for i, order in enumerate(orders):
+            if order["order_id"] == order_id:
+                orders[i]["order_status"] = new_status.value
+                self._save_orders(orders)
+                return Order(**orders[i])
+        return None
 
 
 # Repository for Kaggle historical orders (read-only)

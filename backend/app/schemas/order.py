@@ -80,3 +80,30 @@ class Order(BaseModel):
     order_status: OrderStatus = Field(..., description="Current order status")
 
     model_config = {"from_attributes": True}
+
+
+# Request schema for updating a system order
+class OrderUpdate(BaseModel):
+    food_item: Optional[str] = Field(None, min_length=1, description="New food item name")
+    order_value: Optional[float] = Field(None, gt=0, description="New order value in dollars")
+    delivery_distance: Optional[float] = Field(
+        None, ge=2.0, le=15.0,
+        description="New delivery distance in km (2.0–15.0 inclusive)"
+    )
+    delivery_method: Optional[DeliveryMethod] = Field(None, description="New delivery method")
+    traffic_condition: Optional[TrafficCondition] = Field(None, description="New traffic condition")
+    weather_condition: Optional[WeatherCondition] = Field(None, description="New weather condition")
+
+    @field_validator("food_item")
+    @classmethod
+    def validate_food_item_not_empty(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and not v.strip():
+            raise ValueError("food_item must not be empty or whitespace")
+        return v.strip() if v else v
+
+
+# Order statuses that allow modification
+MODIFIABLE_STATUSES = {OrderStatus.PLACED}
+
+# Order statuses that allow cancellation
+CANCELLABLE_STATUSES = {OrderStatus.PLACED, OrderStatus.PAID}
