@@ -1,9 +1,12 @@
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from app.main import app
 from app.schemas.search_filters import CurrentUser, Role
 from app.routers import search_router
 
+app = FastAPI()
+app.include_router(search_router.router)
+client = TestClient(app)
 
 def fake_admin_user():
     return CurrentUser(user_id="admin1", role=Role.ADMIN, owner_restaurant_ids=[])
