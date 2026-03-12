@@ -86,3 +86,37 @@ def test_get_by_id_returns_correct_record():
     result = repo.get_by_id("BBB002")
     assert result.restaurant_id == "20"
     assert result.food_item == "Burger"
+    
+
+# get_by_customer_id
+
+def test_get_by_customer_id_found():
+    results = repo.get_by_customer_id("abc-123")
+    assert len(results) == 1
+    assert results[0].customer_id == "abc-123"
+
+
+def test_get_by_customer_id_not_found():
+    assert repo.get_by_customer_id("unknown") == []
+
+
+def test_get_by_customer_id_returns_kaggle_order_instances():
+    results = repo.get_by_customer_id("abc-123")
+    assert all(isinstance(o, KaggleOrder) for o in results)
+
+
+# get_by_food_item
+
+def test_get_by_food_item_found():
+    results = repo.get_by_food_item("Pasta")
+    assert len(results) == 1
+    assert results[0].food_item == "Pasta"
+
+
+def test_get_by_food_item_not_found():
+    assert repo.get_by_food_item("Pizza") == []
+
+
+def test_get_by_food_item_multiple_results():
+    results = repo.get_by_food_item("Burger")
+    assert all(o.food_item == "Burger" for o in results)
