@@ -1,22 +1,23 @@
-# services/payment_service.py
-# Core payment simulation logic for Feat7
-# Order validation is stubbed — replace with real order_service when Feat4 is merged
-#
+
+# TODO (Feat4 integration): Replace all stubs marked with [FEAT4] once
 # Public API:
-#   process_payment(order_id, customer_id)  → PaymentOut
-#   get_payment_status(payment_id)          → PaymentOut
+#   process_payment(payload: PaymentCreate) → PaymentOut
+#   get_payment_status(payment_id: UUID)    → Optional[PaymentOut]
+#   get_payment_by_order(order_id: UUID)    → Optional[PaymentOut]
 
 import uuid
 from typing import Optional
 
 from app.repositories import payment_repository
 from app.schemas.constants import PAYMENT_STATUS_SUCCESS
-from app.schemas.payment import PaymentOut, PaymentRecord
+from app.schemas.payment import PaymentCreate, PaymentOut, PaymentRecord
+
 
 class PaymentError(Exception):
     """Raised when a payment cannot be processed."""
 
-def process_payment(order_id: uuid.UUID, customer_id: uuid.UUID) -> PaymentOut:
+
+def process_payment(payload: PaymentCreate) -> PaymentOut:
     """
     Simulate a payment for a confirmed order.
 
@@ -26,6 +27,8 @@ def process_payment(order_id: uuid.UUID, customer_id: uuid.UUID) -> PaymentOut:
     Returns:
         PaymentOut: the created payment record.
     """
+    order_id = payload.order_id
+
     # Guard: prevent duplicate payments for the same order
     existing = payment_repository.get_by_order_id(order_id)
     if existing is not None:
@@ -35,7 +38,10 @@ def process_payment(order_id: uuid.UUID, customer_id: uuid.UUID) -> PaymentOut:
     # when Feat4 order layer is merged
     amount = _get_order_amount(order_id)
 
-    # Build PaymentRecord directly (repository expects PaymentRecord)
+    # [FEAT4] Replace with real customer_id from order
+    # e.g.: customer_id = order.customer_id
+    customer_id = _get_customer_id(order_id)
+
     record = PaymentRecord(
         payment_id=uuid.uuid4(),
         order_id=order_id,
@@ -45,6 +51,10 @@ def process_payment(order_id: uuid.UUID, customer_id: uuid.UUID) -> PaymentOut:
     )
 
     saved = payment_repository.create(record)
+
+    # [FEAT4] After successful payment, update order status to "Paid"
+    # e.g.: order_service.update_status(order_id, "Paid")
+
     return PaymentOut.from_record(saved)
 
 
@@ -70,9 +80,12 @@ def get_payment_by_order(order_id: uuid.UUID) -> Optional[PaymentOut]:
 
 # Stub — replace when Feat4 order_service is available
 
+
 def _get_order_amount(order_id: uuid.UUID) -> float:
-    """
-    Stub: returns a fixed amount until order_service is integrated.
-    TODO: replace with order_service.get_order(order_id).total
-    """
+    """[FEAT4] Stub: replace with order_service.get_order(order_id).total"""
     return 1.0
+
+
+def _get_customer_id(order_id: uuid.UUID) -> uuid.UUID:
+    """[FEAT4] Stub: replace with order_service.get_order(order_id).customer_id"""
+    return uuid.uuid4()
