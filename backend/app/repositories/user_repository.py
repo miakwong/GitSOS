@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
+from typing import List, Optional
 from uuid import UUID
-from typing import Optional, List
 
 from app.schemas.user import UserInDB
 
@@ -24,7 +24,9 @@ class UserRepository:
 
     def _save_users(self):
         data = [u.model_dump() for u in self.users]
-        self.data_file.write_text(json.dumps(data, indent=2, default=str), encoding="utf-8")
+        self.data_file.write_text(
+            json.dumps(data, indent=2, default=str), encoding="utf-8"
+        )
 
     def create_user(self, user: UserInDB) -> UserInDB:
         self.users.append(user)

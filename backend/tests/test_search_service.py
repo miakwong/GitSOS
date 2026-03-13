@@ -1,15 +1,14 @@
 import pytest
-from fastapi import HTTPException
-
 from app.repositories.search_repo import SearchRepository
 from app.schemas.search_filters import (
     CurrentUser,
-    Role,
+    OrderFilterParams,
     PaginationParams,
     RestaurantFilterParams,
-    OrderFilterParams,
+    Role,
 )
 from app.services.search_service import SearchService
+from fastapi import HTTPException
 
 
 class FakeSearchRepository(SearchRepository):
