@@ -5,6 +5,7 @@ import jwt
 from app.repositories.user_repository import UserRepository
 from app.schemas.user import UserInDB
 from app.services.auth_service import TOKEN_BLACKLIST, AuthService
+from app.services.order_service import OrderService
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 
@@ -103,7 +104,11 @@ def get_current_owner(
     return (UUID(payload["sub"]), int(payload.get("restaurant_id", 0)))
 
 
-# returns a dependency that checks if the user has the required role
+def get_order_service() -> OrderService:
+    return OrderService()
+
+
+# checks if the user has required role
 def require_role(*roles: str):
     def role_checker(current_user: UserInDB = Depends(get_current_user)) -> UserInDB:
         if current_user.role not in roles:
