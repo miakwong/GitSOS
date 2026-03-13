@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional, Tuple
 from fastapi import HTTPException
 
+from app.services.query_validation_service import QueryValidationService
 from app.repositories.search_repo import SearchRepository
 from app.schemas.search_filters import (
     CurrentUser,
@@ -108,7 +109,10 @@ class SearchService:
         pagination: PaginationParams,
         raw_query_params: Dict[str, Any],
     ) -> PaginatedResponse:
-        self._reject_unsupported_filters(raw_query_params, ALLOWED_RESTAURANT_FILTERS)
+        QueryValidationService.reject_unsupported_filters(
+            raw_query_params,
+            ALLOWED_RESTAURANT_FILTERS,
+        )
 
         rows = self.repo.load_all_rows()
 
@@ -165,7 +169,15 @@ class SearchService:
         pagination: PaginationParams,
         raw_query_params: Dict[str, Any],
     ) -> PaginatedResponse:
-        self._reject_unsupported_filters(raw_query_params, ALLOWED_MENU_FILTERS)
+        QueryValidationService.reject_unsupported_filters(
+            raw_query_params,
+            ALLOWED_MENU_FILTERS,
+        )
+
+        QueryValidationService.validate_price_range(
+            filters.min_price,
+            filters.max_price,
+        )
 
         rows = self.repo.load_all_rows()
 
@@ -213,7 +225,15 @@ class SearchService:
         pagination: PaginationParams,
         raw_query_params: Dict[str, Any],
     ) -> PaginatedResponse:
-        self._reject_unsupported_filters(raw_query_params, ALLOWED_ORDER_FILTERS)
+        QueryValidationService.reject_unsupported_filters(
+            raw_query_params,
+            ALLOWED_ORDER_FILTERS,
+        )
+
+        QueryValidationService.validate_order_value_range(
+            filters.min_order_value,
+            filters.max_order_value,
+        )
 
         rows = self.repo.load_all_rows()
 
