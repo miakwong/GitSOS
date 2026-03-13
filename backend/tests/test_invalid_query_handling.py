@@ -54,7 +54,7 @@ app = FastAPI()
 async def request_validation_exception_handler(request, exc):
     del request
     return JSONResponse(
-        status_code=400,
+        status_code=422,
         content={
             "message": "Invalid request parameters.",
             "details": exc.errors(),
@@ -71,10 +71,10 @@ search_router.service.repo.load_all_rows = fake_load_rows
 client = TestClient(app)
 
 
-def test_restaurants_unsupported_filter_returns_400():
+def test_restaurants_unsupported_filter_returns_422():
     response = client.get("/search/restaurants?bad_filter=test")
 
-    assert response.status_code == 400
+    assert response.status_code == 422
     body = response.json()
 
     assert "detail" in body
@@ -82,30 +82,30 @@ def test_restaurants_unsupported_filter_returns_400():
     assert "bad_filter" in body["detail"]["unsupported"]
 
 
-def test_menu_items_invalid_price_range_returns_400():
+def test_menu_items_invalid_price_range_returns_422():
     response = client.get("/search/menu-items?min_price=100&max_price=10")
 
-    assert response.status_code == 400
+    assert response.status_code == 422
     body = response.json()
 
     assert body["detail"]["message"] == "Invalid price range."
     assert body["detail"]["reason"] == "min_price cannot be greater than max_price."
 
 
-def test_orders_invalid_order_value_range_returns_400():
+def test_orders_invalid_order_value_range_returns_422():
     response = client.get("/search/orders?min_order_value=80&max_order_value=10")
 
-    assert response.status_code == 400
+    assert response.status_code == 422
     body = response.json()
 
     assert body["detail"]["message"] == "Invalid order value range."
     assert body["detail"]["reason"] == "min_order_value cannot be greater than max_order_value."
 
 
-def test_invalid_query_type_returns_400():
+def test_invalid_query_type_returns_422():
     response = client.get("/search/restaurants?page=abc")
 
-    assert response.status_code == 400
+    assert response.status_code == 422
     body = response.json()
 
     assert body["message"] == "Invalid request parameters."
@@ -115,7 +115,7 @@ def test_invalid_query_type_returns_400():
 def test_error_response_does_not_expose_internal_details():
     response = client.get("/search/restaurants?bad_filter=test")
 
-    assert response.status_code == 400
+    assert response.status_code == 422
     body = response.json()
 
     assert "traceback" not in str(body).lower()
