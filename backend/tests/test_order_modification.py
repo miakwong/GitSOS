@@ -2,6 +2,7 @@
 import json
 import tempfile
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 from app.main import app
@@ -17,6 +18,13 @@ from app.schemas.order import (
 from app.services.order_service import OrderService
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
+
+
+@pytest.fixture(autouse=True)
+def mock_notif():
+    with patch("app.routers.orders._notif_service"):
+        yield
+
 
 client = TestClient(app)
 

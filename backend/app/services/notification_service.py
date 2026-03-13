@@ -11,7 +11,7 @@ from app.schemas.constants import (
 )
 from app.schemas.notification import NotificationRecord
 from app.schemas.order import Order
-from app.schemas.payment import PaymentRecord
+from app.schemas.payment import PaymentOut, PaymentRecord
 
 
 class NotificationService:
@@ -75,6 +75,14 @@ class NotificationService:
         self._create(
             payment.customer_id,
             payment.order_id,
+            NOTIF_PAYMENT_STATUS_CHANGED,
+            f"Payment for order {payment.order_id} is {payment.status}.",
+        )
+
+    def notify_payment_out(self, payment: PaymentOut) -> None:
+        self._create(
+            uuid.UUID(payment.customer_id),
+            uuid.UUID(payment.order_id),
             NOTIF_PAYMENT_STATUS_CHANGED,
             f"Payment for order {payment.order_id} is {payment.status}.",
         )
