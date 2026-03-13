@@ -95,7 +95,7 @@ def test_filter_orders_customer_scope(service, customer_user):
     assert all(order["customer_id"] == "C1" for order in result.data)
 
 
-def test_unsupported_filter_raises_400(service, admin_user):
+def test_unsupported_filter_raises_422(service, admin_user):
     filters = RestaurantFilterParams()
     pagination = PaginationParams(page=1, page_size=10)
 

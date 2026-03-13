@@ -36,14 +36,14 @@ def test_reject_unsupported_filters_allows_valid_params():
     )
 
 
-def test_validate_price_range_raises_http_400():
+def test_validate_price_range_raises_http_422():
     with pytest.raises(HTTPException) as exc_info:
         QueryValidationService.validate_price_range(
             min_price=50,
             max_price=10,
         )
 
-    assert exc_info.value.status_code == 400
+    assert exc_info.value.status_code == 422
     assert exc_info.value.detail["message"] == "Invalid price range."
 
 
