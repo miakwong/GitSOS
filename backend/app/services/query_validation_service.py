@@ -5,10 +5,6 @@ from fastapi import HTTPException
 
 
 class QueryValidationService:
-    """
-    Handles invalid query checking for search endpoints.
-    """
-
     @staticmethod
     def reject_unsupported_filters(
         provided_params: Dict[str, Any],
@@ -22,7 +18,7 @@ class QueryValidationService:
 
         if unsupported:
             raise HTTPException(
-                status_code=400,
+                status_code=422,
                 detail={
                     "message": "Unsupported query parameter(s).",
                     "unsupported": unsupported,
@@ -37,7 +33,7 @@ class QueryValidationService:
     ) -> None:
         if min_price is not None and max_price is not None and min_price > max_price:
             raise HTTPException(
-                status_code=400,
+                status_code=422,
                 detail={
                     "message": "Invalid price range.",
                     "reason": "min_price cannot be greater than max_price.",
@@ -55,7 +51,7 @@ class QueryValidationService:
             and min_order_value > max_order_value
         ):
             raise HTTPException(
-                status_code=400,
+                status_code=422,
                 detail={
                     "message": "Invalid order value range.",
                     "reason": "min_order_value cannot be greater than max_order_value.",
