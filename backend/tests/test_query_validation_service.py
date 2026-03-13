@@ -4,7 +4,7 @@ from fastapi import HTTPException
 from app.services.query_validation_service import QueryValidationService
 
 
-def test_reject_unsupported_filters_raises_http_400():
+def test_reject_unsupported_filters_raises_http_422():
     provided_params = {
         "city": "Kelowna",
         "bad_filter": "oops",
@@ -17,7 +17,7 @@ def test_reject_unsupported_filters_raises_http_400():
             allowed_filters=allowed_filters,
         )
 
-    assert exc_info.value.status_code == 400
+    assert exc_info.value.status_code == 422
     assert exc_info.value.detail["message"] == "Unsupported query parameter(s)."
     assert "bad_filter" in exc_info.value.detail["unsupported"]
 
@@ -54,14 +54,14 @@ def test_validate_price_range_accepts_valid_range():
     )
 
 
-def test_validate_order_value_range_raises_http_400():
+def test_validate_order_value_range_raises_http_422():
     with pytest.raises(HTTPException) as exc_info:
         QueryValidationService.validate_order_value_range(
             min_order_value=100,
             max_order_value=20,
         )
 
-    assert exc_info.value.status_code == 400
+    assert exc_info.value.status_code == 422
     assert exc_info.value.detail["message"] == "Invalid order value range."
 
 

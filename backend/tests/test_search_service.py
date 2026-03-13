@@ -107,5 +107,5 @@ def test_unsupported_filter_raises_400(service, admin_user):
             raw_query_params={"bad_filter": "test"},
         )
 
-    assert exc_info.value.status_code == 400
-    assert "Unsupported filter" in exc_info.value.detail["message"]
+    assert exc_info.value.status_code == 422
+    assert "Unsupported query parameter" in exc_info.value.detail["message"]

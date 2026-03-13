@@ -64,8 +64,8 @@ def test_search_restaurants_success():
 def test_search_restaurants_unsupported_filter():
     response = client.get("/search/restaurants?invalid_filter=abc")
 
-    assert response.status_code == 400
+    assert response.status_code == 422
     body = response.json()
 
     assert "detail" in body
-    assert "Unsupported filter" in body["detail"]["message"]
+    assert "Unsupported query parameter" in body["detail"]["message"]
