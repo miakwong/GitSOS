@@ -1,21 +1,20 @@
 import json
 import tempfile
-import pytest
 from pathlib import Path
 from uuid import uuid4
 
 import jwt
+import pytest
+from app.dependencies import ALGORITHM, SECRET_KEY
+from app.main import app
+from app.repositories.order_repository import KaggleOrderRepository, OrderRepository
+from app.repositories.user_repository import UserRepository
+from app.schemas.order import DeliveryMethod, OrderCreate
+from app.schemas.user import UserCreate
+from app.services.auth_service import AuthService
+from app.services.order_service import OrderService
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
-
-from app.main import app
-from app.dependencies import SECRET_KEY, ALGORITHM
-from app.schemas.order import Order, OrderCreate, DeliveryMethod
-from app.schemas.user import UserCreate
-from app.repositories.order_repository import OrderRepository, KaggleOrderRepository
-from app.services.order_service import OrderService
-from app.services.auth_service import AuthService
-from app.repositories.user_repository import UserRepository
 
 client = TestClient(app)
 
@@ -23,14 +22,16 @@ client = TestClient(app)
 def make_owner_token(rest_id: int) -> str:
     return jwt.encode(
         {"sub": str(uuid4()), "role": "owner", "restaurant_id": rest_id},
-        SECRET_KEY, algorithm=ALGORITHM,
+        SECRET_KEY,
+        algorithm=ALGORITHM,
     )
 
 
 def make_customer_token() -> str:
     return jwt.encode(
         {"sub": str(uuid4()), "role": "customer"},
-        SECRET_KEY, algorithm=ALGORITHM,
+        SECRET_KEY,
+        algorithm=ALGORITHM,
     )
 
 
@@ -68,18 +69,30 @@ def order_service(order_repo, kaggle_repo):
 
 @pytest.fixture
 def r16_order(order_service):
-    return order_service.create_order(OrderCreate(
-        customer_id="cust-123", restaurant_id=16, food_item="Taccos",
-        order_value=25.50, delivery_distance=5.0, delivery_method=DeliveryMethod.BIKE,
-    ))
+    return order_service.create_order(
+        OrderCreate(
+            customer_id="cust-123",
+            restaurant_id=16,
+            food_item="Taccos",
+            order_value=25.50,
+            delivery_distance=5.0,
+            delivery_method=DeliveryMethod.BIKE,
+        )
+    )
 
 
 @pytest.fixture
 def r30_order(order_service):
-    return order_service.create_order(OrderCreate(
-        customer_id="cust-456", restaurant_id=30, food_item="Pasta",
-        order_value=22.00, delivery_distance=7.0, delivery_method=DeliveryMethod.CAR,
-    ))
+    return order_service.create_order(
+        OrderCreate(
+            customer_id="cust-456",
+            restaurant_id=30,
+            food_item="Pasta",
+            order_value=22.00,
+            delivery_distance=7.0,
+            delivery_method=DeliveryMethod.CAR,
+        )
+    )
 
 
 class TestUserSchemaOwner:
@@ -89,12 +102,19 @@ class TestUserSchemaOwner:
             UserCreate(email="owner@example.com", password="pass", role="owner")
 
     def test_owner_valid(self):
-        user = UserCreate(email="owner@example.com", password="pass", role="owner", restaurant_id=16)
+        user = UserCreate(
+            email="owner@example.com", password="pass", role="owner", restaurant_id=16
+        )
         assert user.restaurant_id == 16
 
     def test_customer_cant_have_restaurant_id(self):
         with pytest.raises(ValueError):
-            UserCreate(email="c@example.com", password="pass", role="customer", restaurant_id=16)
+            UserCreate(
+                email="c@example.com",
+                password="pass",
+                role="customer",
+                restaurant_id=16,
+            )
 
     def test_customer_no_restaurant_id_ok(self):
         user = UserCreate(email="c@example.com", password="pass", role="customer")
@@ -108,10 +128,14 @@ class TestOwnerTokenAuth:
         with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump([], f)
             tmp = Path(f.name)
-        return AuthService(user_repo=UserRepository(tmp), secret_key=SECRET_KEY, algorithm=ALGORITHM)
+        return AuthService(
+            user_repo=UserRepository(tmp), secret_key=SECRET_KEY, algorithm=ALGORITHM
+        )
 
     def test_owner_token_has_restaurant_id(self, auth_service):
-        token = auth_service.create_access_token(user_id=uuid4(), role="owner", restaurant_id=16)
+        token = auth_service.create_access_token(
+            user_id=uuid4(), role="owner", restaurant_id=16
+        )
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         assert payload["restaurant_id"] == 16
 
@@ -122,8 +146,11 @@ class TestOwnerTokenAuth:
 
     def test_login_owner_token_carries_restaurant_id(self, auth_service):
         from app.schemas.user import UserLogin
+
         auth_service.register_user(
-            UserCreate(email="o@test.com", password="pw", role="owner", restaurant_id=16)
+            UserCreate(
+                email="o@test.com", password="pw", role="owner", restaurant_id=16
+            )
         )
         token = auth_service.login_user(UserLogin(email="o@test.com", password="pw"))
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
@@ -152,21 +179,35 @@ class TestOwnerOrderService:
 
     def test_get_order_not_found_is_404(self, order_service):
         with pytest.raises(HTTPException) as exc:
-            order_service.get_order_for_owner("00000000-0000-0000-0000-000000000000", 16)
+            order_service.get_order_for_owner(
+                "00000000-0000-0000-0000-000000000000", 16
+            )
         assert exc.value.status_code == 404
 
 
 class TestOwnerRepoFilter:
 
     def test_filters_by_restaurant(self, order_repo):
-        order_repo.create_order(OrderCreate(
-            customer_id="cust-123", restaurant_id=16, food_item="Taccos",
-            order_value=20.0, delivery_distance=5.0, delivery_method=DeliveryMethod.BIKE,
-        ))
-        order_repo.create_order(OrderCreate(
-            customer_id="cust-456", restaurant_id=30, food_item="Pasta",
-            order_value=22.0, delivery_distance=7.0, delivery_method=DeliveryMethod.CAR,
-        ))
+        order_repo.create_order(
+            OrderCreate(
+                customer_id="cust-123",
+                restaurant_id=16,
+                food_item="Taccos",
+                order_value=20.0,
+                delivery_distance=5.0,
+                delivery_method=DeliveryMethod.BIKE,
+            )
+        )
+        order_repo.create_order(
+            OrderCreate(
+                customer_id="cust-456",
+                restaurant_id=30,
+                food_item="Pasta",
+                order_value=22.0,
+                delivery_distance=7.0,
+                delivery_method=DeliveryMethod.CAR,
+            )
+        )
         result = order_repo.get_orders_by_restaurant_id(16)
         assert len(result) == 1
         assert result[0].restaurant_id == 16
@@ -179,6 +220,7 @@ class TestOwnerEndpoints:
 
     def test_list_orders_ok(self, order_service, r16_order, monkeypatch):
         from app.routers import orders as orders_router
+
         monkeypatch.setattr(orders_router, "order_service", order_service)
 
         resp = client.get(
@@ -188,8 +230,11 @@ class TestOwnerEndpoints:
         assert resp.status_code == 200
         assert any(o["order_id"] == str(r16_order.order_id) for o in resp.json())
 
-    def test_list_orders_excludes_other_restaurant(self, order_service, r16_order, r30_order, monkeypatch):
+    def test_list_orders_excludes_other_restaurant(
+        self, order_service, r16_order, r30_order, monkeypatch
+    ):
         from app.routers import orders as orders_router
+
         monkeypatch.setattr(orders_router, "order_service", order_service)
 
         resp = client.get(
@@ -202,6 +247,7 @@ class TestOwnerEndpoints:
 
     def test_get_single_order_ok(self, order_service, r16_order, monkeypatch):
         from app.routers import orders as orders_router
+
         monkeypatch.setattr(orders_router, "order_service", order_service)
 
         resp = client.get(
@@ -211,8 +257,11 @@ class TestOwnerEndpoints:
         assert resp.status_code == 200
         assert resp.json()["order_id"] == str(r16_order.order_id)
 
-    def test_get_order_wrong_restaurant_403(self, order_service, r30_order, monkeypatch):
+    def test_get_order_wrong_restaurant_403(
+        self, order_service, r30_order, monkeypatch
+    ):
         from app.routers import orders as orders_router
+
         monkeypatch.setattr(orders_router, "order_service", order_service)
 
         resp = client.get(
@@ -248,6 +297,7 @@ class TestOwnerEndpoints:
 
     def test_kaggle_order_not_accessible(self, order_service, monkeypatch):
         from app.routers import orders as orders_router
+
         monkeypatch.setattr(orders_router, "order_service", order_service)
 
         resp = client.get(

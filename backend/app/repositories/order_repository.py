@@ -1,14 +1,18 @@
 # Order repository for data access layer
-import json
 import csv
+import json
 import uuid
-from pathlib import Path
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Optional
 
 from app.schemas.order import (
-    Order, OrderCreate, OrderUpdate, OrderStatus,
-    DeliveryMethod, TrafficCondition, WeatherCondition
+    Order,
+    OrderCreate,
+    OrderStatus,
+    OrderUpdate,
+    TrafficCondition,
+    WeatherCondition,
 )
 
 # Path to data files
@@ -99,7 +103,9 @@ class OrderRepository:
         return None
 
     # Update order status by ID
-    def update_order_status(self, order_id: str, new_status: OrderStatus) -> Optional[Order]:
+    def update_order_status(
+        self, order_id: str, new_status: OrderStatus
+    ) -> Optional[Order]:
         orders = self._load_orders()
         for i, order in enumerate(orders):
             if order["order_id"] == order_id:

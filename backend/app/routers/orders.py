@@ -1,11 +1,10 @@
 # Orders router for API endpoints
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, status
-
 from app.dependencies import get_current_owner
 from app.schemas.order import Order, OrderCreate, OrderUpdate
 from app.services.order_service import OrderService
+from fastapi import APIRouter, Depends, status
 
 router = APIRouter(prefix="/orders", tags=["orders"])
 

@@ -1,11 +1,10 @@
-from pathlib import Path
 import tempfile
+from pathlib import Path
 
 import pytest
-
-from app.services.auth_service import AuthService, TOKEN_BLACKLIST
 from app.repositories.user_repository import UserRepository
 from app.schemas.user import UserCreate, UserLogin
+from app.services.auth_service import TOKEN_BLACKLIST, AuthService
 
 SECRET_KEY = "dev-secret-key-for-gitsos-project-authentication-12345"
 ALGORITHM = "HS256"
@@ -17,7 +16,9 @@ def auth_service():
         users_file = Path(temp_dir) / "users.json"
         user_repo = UserRepository(users_file)
         TOKEN_BLACKLIST.clear()
-        yield AuthService(user_repo=user_repo, secret_key=SECRET_KEY, algorithm=ALGORITHM)
+        yield AuthService(
+            user_repo=user_repo, secret_key=SECRET_KEY, algorithm=ALGORITHM
+        )
         TOKEN_BLACKLIST.clear()
 
 
