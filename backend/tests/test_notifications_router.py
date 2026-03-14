@@ -4,7 +4,7 @@ from unittest.mock import patch
 import pytest
 from app.dependencies import get_current_user_full
 from app.main import app
-from app.schemas.constants import NOTIF_ORDER_CREATED
+from app.schemas.constants import NOTIF_ORDER_CREATED, NOTIF_PAYMENT_STATUS_CHANGED
 from app.schemas.notification import NotificationRecord
 from app.schemas.user import UserInDB
 from fastapi.testclient import TestClient
@@ -33,8 +33,15 @@ OTHER_RECORD = NotificationRecord(
     notification_id=uuid.uuid4(),
     user_id=OTHER_USER_ID,
     order_id=ORDER_ID,
-    type=NOTIF_ORDER_CREATED,
+    type=NOTIF_PAYMENT_STATUS_CHANGED,
     message="Another user's notification.",
+)
+
+MOCK_ADMIN = UserInDB(
+    id=uuid.uuid4(),
+    email="admin@example.com",
+    role="admin",
+    password_hash="hashed",
 )
 
 
@@ -146,4 +153,41 @@ def test_mark_as_unread_forbidden():
         return_value=OTHER_RECORD,
     ):
         response = client.patch(f"/notifications/{OTHER_RECORD.notification_id}/unread")
+    assert response.status_code == 403
+
+
+# --- GET /notifications/admin ---
+
+
+def test_admin_list_all():
+    app.dependency_overrides[get_current_user_full] = lambda: MOCK_ADMIN
+    with patch(
+        "app.routers.notifications.notification_repository.list_all",
+        return_value=[MOCK_RECORD, OTHER_RECORD],
+    ):
+        response = client.get("/notifications/admin")
+    assert response.status_code == 200
+    assert len(response.json()) == 2
+
+
+def test_admin_filter_by_type():
+    app.dependency_overrides[get_current_user_full] = lambda: MOCK_ADMIN
+    with patch(
+        "app.routers.notifications.notification_repository.list_all",
+        return_value=[MOCK_RECORD, OTHER_RECORD],
+    ):
+        response = client.get(f"/notifications/admin?notif_type={NOTIF_ORDER_CREATED}")
+    assert response.status_code == 200
+    result = response.json()
+    assert all(r["type"] == NOTIF_ORDER_CREATED for r in result)
+
+
+def test_admin_filter_invalid_type():
+    app.dependency_overrides[get_current_user_full] = lambda: MOCK_ADMIN
+    response = client.get("/notifications/admin?notif_type=INVALID_TYPE")
+    assert response.status_code == 400
+
+
+def test_admin_endpoint_forbidden_for_non_admin():
+    response = client.get("/notifications/admin")
     assert response.status_code == 403
