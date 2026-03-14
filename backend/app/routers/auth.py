@@ -1,15 +1,18 @@
 from typing import List
+from uuid import UUID
 
 from app.dependencies import (
     get_auth_service,
     get_current_token,
     get_current_user,
+    get_order_service,
     get_user_repo,
     require_role,
 )
 from app.repositories.user_repository import UserRepository
-from app.schemas.user import TokenResponse, UserCreate, UserLogin, UserPublic
+from app.schemas.user import TokenResponse, UserCreate, UserLogin, UserProfile, UserPublic
 from app.services.auth_service import AuthService
+from app.services.order_service import OrderService
 from fastapi import APIRouter, Depends, HTTPException, status
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -51,6 +54,50 @@ def me(current_user=Depends(get_current_user)):
         email=current_user.email,
         role=current_user.role,
     )
+
+
+def _build_profile(user, orders=None) -> UserProfile:
+    profile = UserProfile(
+        id=user.id,
+        email=user.email,
+        role=user.role,
+        restaurant_id=user.restaurant_id,
+    )
+    if user.role == "customer":
+        order_list = orders or []
+        profile.order_count = len(order_list)
+        profile.order_history = [str(o.order_id) for o in order_list]
+    return profile
+
+
+# returns the authenticated user
+@router.get("/profile", response_model=UserProfile)
+def get_profile(
+    current_user=Depends(get_current_user),
+    order_svc: OrderService = Depends(get_order_service),
+):
+    orders = None
+    if current_user.role == "customer":
+        orders = order_svc.get_orders_by_customer(str(current_user.id))
+    return _build_profile(current_user, orders)
+
+
+# returns a profile by user ID 
+@router.get("/users/{user_id}/profile", response_model=UserProfile)
+def get_user_profile(
+    user_id: UUID,
+    current_user=Depends(get_current_user),
+    order_svc: OrderService = Depends(get_order_service),
+):
+    if current_user.id != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied: you can only view your own profile",
+        )
+    orders = None
+    if current_user.role == "customer":
+        orders = order_svc.get_orders_by_customer(str(current_user.id))
+    return _build_profile(current_user, orders)
 
 
 # admin only - returns all users and their roles
