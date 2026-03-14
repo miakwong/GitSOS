@@ -15,7 +15,6 @@ def read_root():
 def health():
     return {"status": "ok"}
 
-
 # Include routers
 app.include_router(orders_router)
 app.include_router(payments.router)
