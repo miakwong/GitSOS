@@ -20,5 +20,4 @@ def health():
 app.include_router(orders_router)
 app.include_router(payments.router)
 app.include_router(auth.router)
-app.include_router(orders_router)
 app.include_router(restaurants.router)
