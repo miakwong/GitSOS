@@ -1,5 +1,6 @@
 import tempfile
 from pathlib import Path
+from unittest.mock import MagicMock
 from uuid import uuid4
 
 import pytest
@@ -43,10 +44,7 @@ def client():
 
 
 def _make_order_service(order_repo: OrderRepository) -> OrderService:
-    svc = OrderService.__new__(OrderService)
-    svc.order_repo = order_repo
-    svc.kaggle_repo = None
-    return svc
+    return OrderService(order_repo=order_repo, kaggle_repo=MagicMock())
 
 
 
@@ -298,3 +296,29 @@ def test_owner_profile_by_id_includes_restaurant_id(client):
 
     assert r.status_code == 200
     assert r.json()["restaurant_id"] == 7
+
+
+def test_admin_can_view_another_users_profile(client):
+    c, _ = client
+    _register(c, "admin@test.com", role="admin")
+    _register(c, "cust@test.com", role="customer")
+
+    token_admin = _login(c, "admin@test.com")
+    token_cust = _login(c, "cust@test.com")
+
+    cust_id = c.get("/auth/profile", headers=_headers(token_cust)).json()["id"]
+    r = c.get(f"/auth/users/{cust_id}/profile", headers=_headers(token_admin))
+
+    assert r.status_code == 200
+    assert r.json()["email"] == "cust@test.com"
+
+
+def test_admin_view_nonexistent_user_returns_404(client):
+    c, _ = client
+    _register(c, "admin@test.com", role="admin")
+    token_admin = _login(c, "admin@test.com")
+
+    fake_id = str(uuid4())
+    r = c.get(f"/auth/users/{fake_id}/profile", headers=_headers(token_admin))
+
+    assert r.status_code == 404
