@@ -82,22 +82,30 @@ def get_profile(
     return _build_profile(current_user, orders)
 
 
-# returns a profile by user ID 
+# returns a profile by user ID - admin can view any user, others only their own
 @router.get("/users/{user_id}/profile", response_model=UserProfile)
 def get_user_profile(
     user_id: UUID,
     current_user=Depends(get_current_user),
     order_svc: OrderService = Depends(get_order_service),
+    user_repo: UserRepository = Depends(get_user_repo),
 ):
-    if current_user.id != user_id:
+    if current_user.role != "admin" and current_user.id != user_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Access denied: you can only view your own profile",
         )
+    # admin viewing another user - look them up
+    if current_user.id != user_id:
+        target = user_repo.get_user_by_id(user_id)
+        if not target:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    else:
+        target = current_user
     orders = None
-    if current_user.role == "customer":
-        orders = order_svc.get_orders_by_customer(str(current_user.id))
-    return _build_profile(current_user, orders)
+    if target.role == "customer":
+        orders = order_svc.get_orders_by_customer(str(target.id))
+    return _build_profile(target, orders)
 
 
 # admin only - returns all users and their roles
