@@ -56,6 +56,24 @@ def get_current_user(
         )
 
 
+def get_current_admin(
+    token: str = Depends(oauth2_scheme),
+) -> UUID:
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired token",
+        )
+    if payload.get("role") != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access restricted to administrators",
+        )
+    return UUID(payload["sub"])
+
+
 def get_current_owner(
     token: str = Depends(oauth2_scheme),
 ) -> tuple[UUID, int]:
