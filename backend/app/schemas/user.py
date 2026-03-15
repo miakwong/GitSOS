@@ -1,4 +1,4 @@
-from typing import Literal, Optional
+from typing import List, Literal, Optional
 from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, model_validator
@@ -42,3 +42,14 @@ class UserPublic(BaseModel):
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
+
+
+# extends public user info with role-specific data
+class UserProfile(BaseModel):
+    id: UUID
+    email: EmailStr
+    role: str
+    restaurant_id: Optional[int] = None
+    # role == "customer"
+    order_count: Optional[int] = None
+    order_history: Optional[List[str]] = None

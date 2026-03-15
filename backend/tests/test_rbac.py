@@ -22,7 +22,7 @@ def client():
 
         TOKEN_BLACKLIST.clear()
 
-        # override both so get_current_user uses the same repo
+        # override to use test user repo and auth service 
         app.dependency_overrides[get_auth_service] = lambda: auth_service
         app.dependency_overrides[get_user_repo] = lambda: user_repo
 
