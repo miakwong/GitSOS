@@ -1,8 +1,9 @@
 # Order schemas for system-created orders
-from enum import Enum
 from datetime import datetime
+from enum import Enum
 from typing import Optional
 from uuid import UUID
+
 from pydantic import BaseModel, Field, field_validator
 
 
@@ -43,17 +44,15 @@ class OrderCreate(BaseModel):
     food_item: str = Field(..., min_length=1, description="Non-empty food item name")
     order_value: float = Field(..., gt=0, description="Order value in dollars")
     delivery_distance: float = Field(
-        ..., ge=2.0, le=15.0,
-        description="Delivery distance in km (2.0–15.0 inclusive)"
+        ..., ge=2.0, le=15.0, description="Delivery distance in km (2.0–15.0 inclusive)"
     )
     delivery_method: DeliveryMethod = Field(..., description="Delivery method")
     traffic_condition: Optional[TrafficCondition] = Field(
-        default=TrafficCondition.LOW,
-        description="Traffic condition (defaults to Low)"
+        default=TrafficCondition.LOW, description="Traffic condition (defaults to Low)"
     )
     weather_condition: Optional[WeatherCondition] = Field(
         default=WeatherCondition.SUNNY,
-        description="Weather condition (defaults to Sunny)"
+        description="Weather condition (defaults to Sunny)",
     )
 
     @field_validator("food_item")
@@ -84,15 +83,27 @@ class Order(BaseModel):
 
 # Request schema for updating a system order
 class OrderUpdate(BaseModel):
-    food_item: Optional[str] = Field(None, min_length=1, description="New food item name")
-    order_value: Optional[float] = Field(None, gt=0, description="New order value in dollars")
-    delivery_distance: Optional[float] = Field(
-        None, ge=2.0, le=15.0,
-        description="New delivery distance in km (2.0–15.0 inclusive)"
+    food_item: Optional[str] = Field(
+        None, min_length=1, description="New food item name"
     )
-    delivery_method: Optional[DeliveryMethod] = Field(None, description="New delivery method")
-    traffic_condition: Optional[TrafficCondition] = Field(None, description="New traffic condition")
-    weather_condition: Optional[WeatherCondition] = Field(None, description="New weather condition")
+    order_value: Optional[float] = Field(
+        None, gt=0, description="New order value in dollars"
+    )
+    delivery_distance: Optional[float] = Field(
+        None,
+        ge=2.0,
+        le=15.0,
+        description="New delivery distance in km (2.0–15.0 inclusive)",
+    )
+    delivery_method: Optional[DeliveryMethod] = Field(
+        None, description="New delivery method"
+    )
+    traffic_condition: Optional[TrafficCondition] = Field(
+        None, description="New traffic condition"
+    )
+    weather_condition: Optional[WeatherCondition] = Field(
+        None, description="New weather condition"
+    )
 
     @field_validator("food_item")
     @classmethod

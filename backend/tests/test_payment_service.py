@@ -1,13 +1,18 @@
 import uuid
-from unittest.mock import patch, MagicMock
-
-import pytest
-
-from app.schemas.constants import PAYMENT_STATUS_SUCCESS
-from app.schemas.order import Order, OrderStatus, DeliveryMethod, TrafficCondition, WeatherCondition
-from app.schemas.payment import PaymentCreate, PaymentOut, PaymentRecord
-import app.services.payment_service as service
 from datetime import datetime
+from unittest.mock import patch
+
+import app.services.payment_service as service
+import pytest
+from app.schemas.constants import PAYMENT_STATUS_SUCCESS
+from app.schemas.order import (
+    DeliveryMethod,
+    Order,
+    OrderStatus,
+    TrafficCondition,
+    WeatherCondition,
+)
+from app.schemas.payment import PaymentCreate, PaymentOut, PaymentRecord
 
 ORDER_ID = uuid.uuid4()
 CUSTOMER_ID = uuid.uuid4()
@@ -60,6 +65,7 @@ def mock_order_service():
 
 # process_payment
 
+
 def test_process_payment_returns_payment_out(mock_repo, mock_order_service):
     result = service.process_payment(PaymentCreate(order_id=ORDER_ID))
     assert isinstance(result, PaymentOut)
@@ -105,6 +111,7 @@ def test_process_payment_no_duplicate_create_when_exists(mock_repo, mock_order_s
 
 # get_payment_status
 
+
 def test_get_payment_status_found(mock_repo):
     mock_repo.get_by_id.return_value = _make_record()
     result = service.get_payment_status(PAYMENT_ID)
@@ -123,6 +130,7 @@ def test_get_payment_status_correct_payment_id(mock_repo):
 
 
 # get_payment_by_order
+
 
 def test_get_payment_by_order_found(mock_repo):
     mock_repo.get_by_order_id.return_value = _make_record()

@@ -1,6 +1,7 @@
-from pydantic import BaseModel, EmailStr, model_validator
-from typing import List, Literal, Optional
+from typing import Literal, Optional
 from uuid import UUID
+
+from pydantic import BaseModel, EmailStr, model_validator
 
 
 class UserCreate(BaseModel):

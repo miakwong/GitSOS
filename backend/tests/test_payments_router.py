@@ -53,6 +53,12 @@ def override_auth():
     app.dependency_overrides.clear()
 
 
+@pytest.fixture(autouse=True)
+def mock_notif():
+    with patch("app.routers.payments._notif_service"):
+        yield
+
+
 @pytest.fixture
 def mock_service():
     with patch("app.routers.payments.payment_service") as mock:
