@@ -1,14 +1,13 @@
-from pathlib import Path
 import tempfile
+from pathlib import Path
 
 import jwt
 import pytest
-from fastapi.testclient import TestClient
-
+from app.dependencies import ALGORITHM, SECRET_KEY, get_auth_service
 from app.main import app
-from app.dependencies import get_auth_service, SECRET_KEY, ALGORITHM
 from app.repositories.user_repository import UserRepository
-from app.services.auth_service import AuthService, TOKEN_BLACKLIST
+from app.services.auth_service import TOKEN_BLACKLIST, AuthService
+from fastapi.testclient import TestClient
 
 
 @pytest.fixture
@@ -39,22 +38,12 @@ def client():
 def register_user(client, email="user@test.com", password="secret12"):
     return client.post(
         "/auth/register",
-        json={
-            "email": email,
-            "password": password,
-            "role": "customer"
-        }
+        json={"email": email, "password": password, "role": "customer"},
     )
 
 
 def login_user(client, email="user@test.com", password="secret12"):
-    return client.post(
-        "/auth/login",
-        json={
-            "email": email,
-            "password": password
-        }
-    )
+    return client.post("/auth/login", json={"email": email, "password": password})
 
 
 def test_register_success(client):
@@ -96,10 +85,7 @@ def test_logout_success(client):
     login_response = login_user(client, "logout@test.com")
     token = login_response.json()["access_token"]
 
-    response = client.post(
-        "/auth/logout",
-        headers={"Authorization": f"Bearer {token}"}
-    )
+    response = client.post("/auth/logout", headers={"Authorization": f"Bearer {token}"})
 
     assert response.status_code == 200
     assert response.json()["message"] == "Logged out successfully"
@@ -110,15 +96,9 @@ def test_access_rejected_after_logout(client):
     login_response = login_user(client, "afterlogout@test.com")
     token = login_response.json()["access_token"]
 
-    client.post(
-        "/auth/logout",
-        headers={"Authorization": f"Bearer {token}"}
-    )
+    client.post("/auth/logout", headers={"Authorization": f"Bearer {token}"})
 
-    response = client.get(
-        "/auth/me",
-        headers={"Authorization": f"Bearer {token}"}
-    )
+    response = client.get("/auth/me", headers={"Authorization": f"Bearer {token}"})
 
     assert response.status_code == 401
 
@@ -129,10 +109,7 @@ def test_access_rejected_with_expired_token(client):
     token = login_response.json()["access_token"]
 
     payload = jwt.decode(
-        token,
-        SECRET_KEY,
-        algorithms=[ALGORITHM],
-        options={"verify_exp": False}
+        token, SECRET_KEY, algorithms=[ALGORITHM], options={"verify_exp": False}
     )
 
     expired_auth_service = AuthService(
@@ -143,13 +120,11 @@ def test_access_rejected_with_expired_token(client):
     )
 
     expired_token = expired_auth_service.create_access_token(
-        payload["sub"],
-        payload["role"]
+        payload["sub"], payload["role"]
     )
 
     response = client.get(
-        "/auth/me",
-        headers={"Authorization": f"Bearer {expired_token}"}
+        "/auth/me", headers={"Authorization": f"Bearer {expired_token}"}
     )
 
     assert response.status_code == 401

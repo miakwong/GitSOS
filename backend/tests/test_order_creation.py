@@ -1,22 +1,26 @@
 # Tests for order creation functionality
-import pytest
 import json
 import tempfile
 from pathlib import Path
-from fastapi.testclient import TestClient
 
+import pytest
 from app.main import app
+from app.repositories.order_repository import KaggleOrderRepository, OrderRepository
 from app.schemas.order import (
-    OrderCreate, Order, OrderStatus,
-    DeliveryMethod, TrafficCondition, WeatherCondition
+    DeliveryMethod,
+    OrderCreate,
+    OrderStatus,
+    TrafficCondition,
+    WeatherCondition,
 )
-from app.repositories.order_repository import OrderRepository, KaggleOrderRepository
 from app.services.order_service import OrderService
+from fastapi.testclient import TestClient
 
 client = TestClient(app)
 
 
 # --- Fixtures ---
+
 
 # Create a temporary JSON file for system orders
 @pytest.fixture
@@ -56,6 +60,7 @@ def order_service(order_repo, kaggle_repo):
 
 
 # --- Schema Validation Tests ---
+
 
 # Tests for OrderCreate schema validation
 class TestOrderSchemaValidation:
@@ -187,6 +192,7 @@ class TestOrderSchemaValidation:
 
 # --- Repository Tests ---
 
+
 # Tests for Kaggle repository (read-only)
 class TestKaggleOrderRepository:
 
@@ -251,6 +257,7 @@ class TestOrderRepository:
 
 # --- Service Tests ---
 
+
 # Tests for order service business logic
 class TestOrderService:
 
@@ -282,6 +289,7 @@ class TestOrderService:
             delivery_method=DeliveryMethod.BIKE,
         )
         from fastapi import HTTPException
+
         with pytest.raises(HTTPException) as exc_info:
             order_service.create_order(order_data)
         assert exc_info.value.status_code == 400
@@ -298,6 +306,7 @@ class TestOrderService:
             delivery_method=DeliveryMethod.BIKE,
         )
         from fastapi import HTTPException
+
         with pytest.raises(HTTPException) as exc_info:
             order_service.create_order(order_data)
         assert exc_info.value.status_code == 400
@@ -314,6 +323,7 @@ class TestOrderService:
             delivery_method=DeliveryMethod.BIKE,
         )
         from fastapi import HTTPException
+
         with pytest.raises(HTTPException) as exc_info:
             order_service.create_order(order_data)
         assert exc_info.value.status_code == 400
@@ -350,6 +360,7 @@ class TestOrderService:
 
 # --- Enum Tests ---
 
+
 # Tests for enum value constraints
 class TestEnumValues:
 
@@ -381,6 +392,7 @@ class TestEnumValues:
 
 
 # --- Integration Tests ---
+
 
 # Integration tests for order API endpoints
 class TestOrderAPIIntegration:

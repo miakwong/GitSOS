@@ -1,21 +1,22 @@
 from __future__ import annotations
 
 from typing import Any, Dict, Optional
-from fastapi import APIRouter, Depends, Query, Request
 
 from app.schemas.search_filters import (
     CurrentUser,
-    PaginationParams,
-    RestaurantFilterParams,
     MenuItemFilterParams,
     OrderFilterParams,
     PaginatedResponse,
+    PaginationParams,
+    RestaurantFilterParams,
 )
 from app.services.search_service import SearchService
+from fastapi import APIRouter, Depends, Query, Request
 
 # If there is already a final auth in dependencies.py, it could be imported here.
 # Example:
 # from dependencies import get_current_user
+
 
 def get_current_user_mock() -> CurrentUser:
     """

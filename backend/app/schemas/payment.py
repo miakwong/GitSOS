@@ -1,8 +1,6 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID
-from pydantic import BaseModel, Field, field_validator
-from datetime import datetime, timezone
 
 from app.schemas.constants import (
     PAYMENT_STATUS_PENDING,

@@ -6,12 +6,14 @@ from app.schemas.constants import ROLE_ADMIN, ROLE_OWNER
 from app.schemas.payment import PaymentCreate, PaymentOut
 from app.schemas.user import UserInDB
 from app.services import payment_service
+from app.services.notification_service import NotificationService
 from app.services.order_service import OrderService
 from fastapi import APIRouter, Depends, HTTPException
 
 router = APIRouter(prefix="/payments", tags=["payments"])
 
 _order_service = OrderService()
+_notif_service = NotificationService()
 
 
 def _check_payment_access(payment: PaymentOut, current_user: UserInDB) -> None:
@@ -42,7 +44,9 @@ def process_payment(
         if order.customer_id != str(current_user.id):
             raise HTTPException(status_code=403, detail="Access denied")
     try:
-        return payment_service.process_payment(payload)
+        result = payment_service.process_payment(payload)
+        _notif_service.notify_payment_out(result)
+        return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
