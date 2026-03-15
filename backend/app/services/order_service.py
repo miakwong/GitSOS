@@ -1,7 +1,7 @@
 # Order service for business logic
 from fastapi import HTTPException, status
 
-from app.schemas.order import Order, OrderCreate, OrderUpdate, OrderStatus, MODIFIABLE_STATUSES, CANCELLABLE_STATUSES
+from app.schemas.order import Order, OrderCreate, OrderUpdate, OrderStatus, MODIFIABLE_STATUSES, CANCELLABLE_STATUSES, VALID_TRANSITIONS
 from app.repositories.order_repository import OrderRepository, KaggleOrderRepository
 
 
@@ -153,6 +153,66 @@ class OrderService:
                 detail="Failed to update order",
             )
         return updated_order
+
+    # Advance an order through valid workflow transitions (owner only)
+    def advance_order_status(self, order_id: str, new_status: OrderStatus, rest_id: int) -> Order:
+        if self._is_kaggle_order(order_id):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Kaggle historical orders cannot be modified",
+            )
+
+        order = self.order_repo.get_order_by_id(order_id)
+        if not order:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Order with ID '{order_id}' not found",
+            )
+
+        if order.restaurant_id != rest_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied: this order does not belong to your restaurant",
+            )
+
+        allowed = VALID_TRANSITIONS[order.order_status]
+        if new_status not in allowed:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Cannot transition order from '{order.order_status.value}' to '{new_status.value}'. "
+                       f"Valid transitions: {[s.value for s in allowed] if allowed else 'none (terminal state)'}",
+            )
+
+        updated = self.order_repo.update_order_status(order_id, new_status)
+        if not updated:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to update order status",
+            )
+        return updated
+
+    # Override order status as admin (bypasses workflow transition rules)
+    def admin_override_status(self, order_id: str, new_status: OrderStatus) -> Order:
+        if self._is_kaggle_order(order_id):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Kaggle historical orders cannot be modified",
+            )
+
+        order = self.order_repo.get_order_by_id(order_id)
+        if not order:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Order with ID '{order_id}' not found",
+            )
+
+        updated = self.order_repo.update_order_status(order_id, new_status)
+        if not updated:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to update order status",
+            )
+        return updated
 
     # Cancel a system order with ownership and workflow validation
     def cancel_order(self, order_id: str, customer_id: str) -> Order:
