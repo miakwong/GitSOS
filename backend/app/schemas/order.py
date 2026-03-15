@@ -107,3 +107,18 @@ MODIFIABLE_STATUSES = {OrderStatus.PLACED}
 
 # Order statuses that allow cancellation
 CANCELLABLE_STATUSES = {OrderStatus.PLACED, OrderStatus.PAID}
+
+# Valid workflow transitions for system-created orders
+# Each key maps to the set of statuses it can move to
+VALID_TRANSITIONS: dict[OrderStatus, set[OrderStatus]] = {
+    OrderStatus.PLACED: {OrderStatus.PAID, OrderStatus.CANCELLED},
+    OrderStatus.PAID: {OrderStatus.PREPARING, OrderStatus.CANCELLED},
+    OrderStatus.PREPARING: {OrderStatus.DELIVERED},
+    OrderStatus.DELIVERED: set(),
+    OrderStatus.CANCELLED: set(),
+}
+
+
+# Request body for owner/admin status update endpoints
+class OrderStatusUpdate(BaseModel):
+    order_status: OrderStatus = Field(..., description="The new status to transition the order to")
