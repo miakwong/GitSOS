@@ -1,12 +1,11 @@
 # Orders router for API endpoints
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, status
-
-from app.dependencies import get_current_owner, get_current_admin
-from app.schemas.order import Order, OrderCreate, OrderUpdate, OrderStatusUpdate
+from app.dependencies import get_current_admin, get_current_owner
+from app.schemas.order import Order, OrderCreate, OrderStatusUpdate, OrderUpdate
 from app.services.notification_service import NotificationService
 from app.services.order_service import OrderService
+from fastapi import APIRouter, Depends, status
 
 router = APIRouter(prefix="/orders", tags=["orders"])
 
@@ -88,7 +87,9 @@ def owner_update_order_status(
     current_owner: tuple[UUID, int] = Depends(get_current_owner),
 ) -> Order:
     _, rest_id = current_owner
-    return order_service.advance_order_status(order_id, status_update.order_status, rest_id)
+    return order_service.advance_order_status(
+        order_id, status_update.order_status, rest_id
+    )
 
 
 # Admin can override order status without following normal transition rules

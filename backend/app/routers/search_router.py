@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional
 
+from app.dependencies import get_current_user_full
 from app.schemas.search_filters import (
     CurrentUser,
     MenuItemFilterParams,
@@ -10,20 +11,20 @@ from app.schemas.search_filters import (
     PaginationParams,
     RestaurantFilterParams,
 )
+from app.schemas.user import UserInDB
 from app.services.search_service import SearchService
 from fastapi import APIRouter, Depends, Query, Request
 
-# If there is already a final auth in dependencies.py, it could be imported here.
-# Example:
-# from dependencies import get_current_user
+
+def _to_current_user(user: UserInDB) -> CurrentUser:
+    restaurant_ids = [str(user.restaurant_id)] if user.restaurant_id is not None else []
+    return CurrentUser(
+        user_id=str(user.id), role=user.role, owner_restaurant_ids=restaurant_ids
+    )
 
 
-def get_current_user_mock() -> CurrentUser:
-    """
-    Replace with the real dependency:
-        return get_current_user()
-    """
-    return CurrentUser(user_id="demo-user", role="admin", owner_restaurant_ids=[])
+def get_search_user(user: UserInDB = Depends(get_current_user_full)) -> CurrentUser:
+    return _to_current_user(user)
 
 
 router = APIRouter(prefix="/search", tags=["Search & Filters"])
@@ -39,7 +40,7 @@ def search_restaurants(
     cuisine: Optional[str] = None,
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
-    user: CurrentUser = Depends(get_current_user_mock),
+    user: CurrentUser = Depends(get_search_user),
 ):
     filters = RestaurantFilterParams(
         restaurant_id=restaurant_id,
@@ -63,7 +64,7 @@ def search_menu_items(
     max_price: Optional[float] = Query(None, ge=0),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
-    user: CurrentUser = Depends(get_current_user_mock),
+    user: CurrentUser = Depends(get_search_user),
 ):
     filters = MenuItemFilterParams(
         restaurant_id=restaurant_id,
@@ -89,7 +90,7 @@ def search_orders(
     max_order_value: Optional[float] = Query(None, ge=0),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
-    user: CurrentUser = Depends(get_current_user_mock),
+    user: CurrentUser = Depends(get_search_user),
 ):
     filters = OrderFilterParams(
         order_id=order_id,

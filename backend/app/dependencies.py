@@ -73,13 +73,12 @@ def get_current_user(
 def get_current_admin(
     token: str = Depends(oauth2_scheme),
 ) -> UUID:
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-    except Exception:
+    if token in TOKEN_BLACKLIST:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired token",
+            detail="Token has been invalidated",
         )
+    payload = _decode_token(token)
     if payload.get("role") != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
