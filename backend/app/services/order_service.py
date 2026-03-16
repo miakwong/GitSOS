@@ -1,10 +1,17 @@
 # Order service for business logic
+from app.repositories.order_repository import KaggleOrderRepository, OrderRepository
+from app.schemas.order import (
+    CANCELLABLE_STATUSES,
+    MODIFIABLE_STATUSES,
+    Order,
+    OrderCreate,
+    OrderStatus,
+    OrderUpdate,
+)
 from fastapi import HTTPException, status
 
 from app.schemas.order import Order, OrderCreate, OrderUpdate, OrderStatus, MODIFIABLE_STATUSES, CANCELLABLE_STATUSES, VALID_TRANSITIONS
 from app.repositories.order_repository import OrderRepository, KaggleOrderRepository
-
-
 # Service layer for order creation and validation
 class OrderService:
 
@@ -119,7 +126,9 @@ class OrderService:
         return self.kaggle_repo.get_order_by_id(order_id) is not None
 
     # Update a system order with ownership and workflow validation
-    def update_order(self, order_id: str, customer_id: str, update_data: OrderUpdate) -> Order:
+    def update_order(
+        self, order_id: str, customer_id: str, update_data: OrderUpdate
+    ) -> Order:
         # Check if this is a Kaggle order (read-only)
         if self._is_kaggle_order(order_id):
             raise HTTPException(
@@ -238,7 +247,9 @@ class OrderService:
         self._validate_cancellable_status(order)
 
         # Update status to Cancelled
-        cancelled_order = self.order_repo.update_order_status(order_id, OrderStatus.CANCELLED)
+        cancelled_order = self.order_repo.update_order_status(
+            order_id, OrderStatus.CANCELLED
+        )
         if not cancelled_order:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

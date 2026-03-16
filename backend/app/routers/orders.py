@@ -5,12 +5,15 @@ from fastapi import APIRouter, Depends, status
 
 from app.dependencies import get_current_owner, get_current_admin
 from app.schemas.order import Order, OrderCreate, OrderUpdate, OrderStatusUpdate
+from app.services.notification_service import NotificationService
 from app.services.order_service import OrderService
+from fastapi import APIRouter, Depends, status
 
 router = APIRouter(prefix="/orders", tags=["orders"])
 
-# Service instance
+# Service instances
 order_service = OrderService()
+_notif_service = NotificationService()
 
 
 # Create a new system order
@@ -22,7 +25,9 @@ order_service = OrderService()
     description="Creates a new order with validated customer, restaurant, and food item associations.",
 )
 def create_order(order_data: OrderCreate) -> Order:
-    return order_service.create_order(order_data)
+    order = order_service.create_order(order_data)
+    _notif_service.notify_order_created(order)
+    return order
 
 
 # Retrieve all system-created orders
@@ -66,7 +71,9 @@ def update_order(order_id: str, customer_id: str, update_data: OrderUpdate) -> O
     description="Cancels a system order. Only the order owner can cancel, and only if order is in 'Placed' status.",
 )
 def cancel_order(order_id: str, customer_id: str) -> Order:
-    return order_service.cancel_order(order_id, customer_id)
+    order = order_service.cancel_order(order_id, customer_id)
+    _notif_service.notify_order_status_changed(order)
+    return order
 
 
 @router.patch(
