@@ -14,11 +14,6 @@ def get_restaurant(restaurant_id: str) -> Optional[KaggleRestaurant]:
     return kaggle_restaurant_repository.get_by_id(restaurant_id)
 
 
-def get_menu(restaurant_id: str) -> list[KaggleMenuItem]:
-    # Return all menu items for a restaurant 
-    return kaggle_menu_repository.get_by_restaurant(restaurant_id)
-
-
 def get_menu_for_restaurant(restaurant_id: str) -> Optional[list[KaggleMenuItem]]:
     # returns None if the restaurant doesn't exist
     # returns a list (possibly empty) if the restaurant exists

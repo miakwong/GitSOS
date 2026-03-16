@@ -25,10 +25,6 @@ def mock_service():
         mock.get_restaurant.side_effect = lambda rid: next(
             (r for r in RESTAURANTS if r.restaurant_id == rid), None
         )
-        mock.get_menu.side_effect = lambda rid: [
-            m for m in MENU if m.restaurant_id == rid
-        ]
-        # returns None for unknown restaurants 
         def _menu_for_restaurant(rid):
             if not any(r.restaurant_id == rid for r in RESTAURANTS):
                 return None

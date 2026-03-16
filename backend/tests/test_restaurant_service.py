@@ -56,20 +56,6 @@ def test_get_restaurant_not_found():
     assert service.get_restaurant("999") is None
 
 
-# get_menu
-def test_get_menu_returns_items():
-    results = service.get_menu("10")
-    assert len(results) == 2
-
-
-def test_get_menu_empty_for_unknown_restaurant():
-    assert service.get_menu("999") == []
-
-
-def test_get_menu_returns_kaggle_menu_item_instances():
-    assert all(isinstance(m, KaggleMenuItem) for m in service.get_menu("10"))
-
-
 # get_menu_for_restaurant
 def test_get_menu_for_restaurant_returns_items():
     results = service.get_menu_for_restaurant("10")
