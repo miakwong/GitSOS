@@ -28,12 +28,16 @@ def mock_service():
         mock.get_menu.side_effect = lambda rid: [
             m for m in MENU if m.restaurant_id == rid
         ]
+        # returns None for unknown restaurants 
+        def _menu_for_restaurant(rid):
+            if not any(r.restaurant_id == rid for r in RESTAURANTS):
+                return None
+            return [m for m in MENU if m.restaurant_id == rid]
+        mock.get_menu_for_restaurant.side_effect = _menu_for_restaurant
         yield
 
 
 # GET /restaurants
-
-
 def test_list_restaurants_status_200():
     response = client.get("/restaurants")
     assert response.status_code == 200
@@ -56,8 +60,6 @@ def test_list_restaurants_fields():
 
 
 # GET /restaurants/{id}
-
-
 def test_get_restaurant_found():
     response = client.get("/restaurants/10")
     assert response.status_code == 200
@@ -69,10 +71,7 @@ def test_get_restaurant_not_found():
     assert response.status_code == 404
     assert response.json()["detail"] == "Restaurant not found"
 
-
 # GET /restaurants/{id}/menu
-
-
 def test_get_menu_status_200():
     response = client.get("/restaurants/10/menu")
     assert response.status_code == 200
@@ -89,6 +88,13 @@ def test_get_menu_fields():
     assert data[0]["median_price"] == 35.0
 
 
-def test_get_menu_empty_for_unknown_restaurant():
-    data = client.get("/restaurants/999/menu").json()
+def test_get_menu_unknown_restaurant_returns_404():
+    response = client.get("/restaurants/999/menu")
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Restaurant not found"
+
+
+def test_get_menu_empty_for_restaurant_with_no_items():
+    # restaurant 20 exists but has no menu items in fixture
+    data = client.get("/restaurants/20/menu").json()
     assert data == []
