@@ -56,6 +56,7 @@ def get_current_user(
         )
 
 
+# Check that the token belongs to an admin user
 def get_current_admin(
     token: str = Depends(oauth2_scheme),
 ) -> UUID:

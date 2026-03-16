@@ -69,6 +69,7 @@ def cancel_order(order_id: str, customer_id: str) -> Order:
     return order_service.cancel_order(order_id, customer_id)
 
 
+# Owner advances order status through valid workflow transitions
 @router.patch(
     "/owner/restaurant/{order_id}/status",
     response_model=Order,
@@ -84,6 +85,7 @@ def owner_update_order_status(
     return order_service.advance_order_status(order_id, status_update.order_status, rest_id)
 
 
+# Admin can override order status without following normal transition rules
 @router.patch(
     "/admin/{order_id}/status",
     response_model=Order,
