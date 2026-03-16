@@ -19,6 +19,14 @@ def get_menu(restaurant_id: str) -> list[KaggleMenuItem]:
     return kaggle_menu_repository.get_by_restaurant(restaurant_id)
 
 
+def get_menu_for_restaurant(restaurant_id: str) -> Optional[list[KaggleMenuItem]]:
+    # returns None if the restaurant doesn't exist
+    # returns a list (possibly empty) if the restaurant exists
+    if kaggle_restaurant_repository.get_by_id(restaurant_id) is None:
+        return None
+    return kaggle_menu_repository.get_by_restaurant(restaurant_id)
+
+
 def get_median_price(food_item: str) -> Optional[float]:
     """
     Return the median order_value for a food item across the entire dataset.
