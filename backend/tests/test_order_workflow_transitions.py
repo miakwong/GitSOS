@@ -20,7 +20,7 @@ from app.services.order_service import OrderService
 client = TestClient(app)
 
 
-# --- Token helpers ---
+# helper
 
 def make_owner_token(rest_id: int) -> str:
     return jwt.encode(
@@ -43,7 +43,7 @@ def make_customer_token() -> str:
     )
 
 
-# --- Fixtures ---
+
 
 @pytest.fixture
 def temp_orders_file():
@@ -93,7 +93,7 @@ def r30_order(order_service):
     ))
 
 
-# --- Schema tests ---
+#  Schema tests 
 
 class TestOrderStatusUpdateSchema:
 
@@ -111,7 +111,7 @@ class TestOrderStatusUpdateSchema:
             OrderStatusUpdate(order_status="InvalidStatus")
 
 
-# --- VALID_TRANSITIONS structure tests ---
+#  valid transition tests
 
 class TestValidTransitionsStructure:
 
@@ -138,7 +138,7 @@ class TestValidTransitionsStructure:
         assert len(VALID_TRANSITIONS[OrderStatus.CANCELLED]) == 0
 
 
-# --- Service: advance_order_status (owner) ---
+
 
 class TestAdvanceOrderStatusService:
 
@@ -237,7 +237,7 @@ class TestAdvanceOrderStatusService:
         assert "Kaggle" in exc.value.detail
 
 
-# --- Service: admin_override_status ---
+# admin override tests
 
 class TestAdminOverrideStatusService:
 
@@ -287,7 +287,7 @@ class TestAdminOverrideStatusService:
         assert exc.value.status_code == 404
 
 
-# --- API endpoint: owner status update ---
+# API endpoint tests for owner status updates
 
 class TestOwnerStatusEndpoint:
 
@@ -381,7 +381,7 @@ class TestOwnerStatusEndpoint:
         assert resp.status_code == 400
 
 
-# --- API endpoint: admin status override ---
+# API endpoint tests for admin status overrides
 
 class TestAdminStatusEndpoint:
 

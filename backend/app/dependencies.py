@@ -42,6 +42,7 @@ def _decode_token(token: str) -> dict:
         )
 
 
+# Get the current logged-in user from token
 def get_current_user(
     token: str = Depends(oauth2_scheme),
     user_repo: UserRepository = Depends(get_user_repo),
@@ -68,6 +69,7 @@ def get_current_user(
     return user
 
 
+# Check that the token belongs to an admin user
 def get_current_admin(
     token: str = Depends(oauth2_scheme),
 ) -> UUID:
@@ -86,6 +88,7 @@ def get_current_admin(
     return UUID(payload["sub"])
 
 
+# Get full user object from token, blocking blacklisted tokens
 def get_current_user_full(
     token: str = Depends(oauth2_scheme),
     user_repo: UserRepository = Depends(get_user_repo),
@@ -105,25 +108,7 @@ def get_current_user_full(
     return user
 
 
-def get_current_owner(
-    token: str = Depends(oauth2_scheme),
-    user_repo: UserRepository = Depends(get_user_repo),
-) -> UserInDB:
-    if token in TOKEN_BLACKLIST:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token has been invalidated",
-        )
-    payload = _decode_token(token)
-    user = user_repo.get_user_by_id(UUID(payload["sub"]))
-    if user is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found",
-        )
-    return user
-
-
+# Check that token belongs to an owner and return (user_id, restaurant_id)
 def get_current_owner(
     token: str = Depends(oauth2_scheme),
 ) -> tuple[UUID, int]:

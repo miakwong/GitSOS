@@ -7,7 +7,7 @@ from uuid import UUID
 from pydantic import BaseModel, Field, field_validator
 
 
-# Valid order status values for system-created orders
+# order status values for system-created orders
 class OrderStatus(str, Enum):
     PLACED = "Placed"
     PAID = "Paid"
@@ -16,28 +16,28 @@ class OrderStatus(str, Enum):
     CANCELLED = "Cancelled"
 
 
-# Valid delivery method values
+#  delivery method values
 class DeliveryMethod(str, Enum):
     WALK = "Walk"
     BIKE = "Bike"
     CAR = "Car"
 
 
-# Valid traffic condition values
+#  traffic condition values
 class TrafficCondition(str, Enum):
     LOW = "Low"
     MEDIUM = "Medium"
     HIGH = "High"
 
 
-# Valid weather condition values
+#  weather condition values
 class WeatherCondition(str, Enum):
     SUNNY = "Sunny"
     RAINY = "Rainy"
     SNOWY = "Snowy"
 
 
-# Request schema for creating a system order
+# creating a system order
 class OrderCreate(BaseModel):
     customer_id: str = Field(..., description="ID of the customer placing the order")
     restaurant_id: int = Field(..., description="ID of the restaurant")
@@ -57,14 +57,14 @@ class OrderCreate(BaseModel):
 
     @field_validator("food_item")
     @classmethod
-    # Ensure food_item is not empty or whitespace
+    # make sure food_item is not empty 
     def validate_food_item_not_empty(cls, v: str) -> str:
         if not v.strip():
             raise ValueError("food_item must not be empty or whitespace")
         return v.strip()
 
 
-# Response schema for a system-created order
+
 class Order(BaseModel):
     order_id: UUID = Field(..., description="Unique UUID for the order")
     customer_id: str = Field(..., description="ID of the customer")
@@ -81,7 +81,7 @@ class Order(BaseModel):
     model_config = {"from_attributes": True}
 
 
-# Request schema for updating a system order
+# updating a system order
 class OrderUpdate(BaseModel):
     food_item: Optional[str] = Field(
         None, min_length=1, description="New food item name"
@@ -119,8 +119,8 @@ MODIFIABLE_STATUSES = {OrderStatus.PLACED}
 # Order statuses that allow cancellation
 CANCELLABLE_STATUSES = {OrderStatus.PLACED, OrderStatus.PAID}
 
-# Valid workflow transitions for system-created orders
-# Each key maps to the set of statuses it can move to
+#  workflow transitions for system-created orders
+
 VALID_TRANSITIONS: dict[OrderStatus, set[OrderStatus]] = {
     OrderStatus.PLACED: {OrderStatus.PAID, OrderStatus.CANCELLED},
     OrderStatus.PAID: {OrderStatus.PREPARING, OrderStatus.CANCELLED},
@@ -130,6 +130,6 @@ VALID_TRANSITIONS: dict[OrderStatus, set[OrderStatus]] = {
 }
 
 
-# Request body for owner/admin status update endpoints
+# owner/admin status update endpoints
 class OrderStatusUpdate(BaseModel):
     order_status: OrderStatus = Field(..., description="The new status to transition the order to")

@@ -3,15 +3,13 @@ from app.repositories.order_repository import KaggleOrderRepository, OrderReposi
 from app.schemas.order import (
     CANCELLABLE_STATUSES,
     MODIFIABLE_STATUSES,
+    VALID_TRANSITIONS,
     Order,
     OrderCreate,
     OrderStatus,
     OrderUpdate,
 )
 from fastapi import HTTPException, status
-
-from app.schemas.order import Order, OrderCreate, OrderUpdate, OrderStatus, MODIFIABLE_STATUSES, CANCELLABLE_STATUSES, VALID_TRANSITIONS
-from app.repositories.order_repository import OrderRepository, KaggleOrderRepository
 # Service layer for order creation and validation
 class OrderService:
 
