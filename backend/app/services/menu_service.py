@@ -1,6 +1,6 @@
 from typing import Optional
 
-from app.repositories import menu_repository
+from app.repositories import kaggle_restaurant_repository, menu_repository
 from app.schemas.menu import MenuItemCreate, MenuItemOut, MenuItemUpdate
 from fastapi import HTTPException
 
@@ -10,6 +10,8 @@ def get_menu_items(restaurant_id: str) -> list[MenuItemOut]:
 
 
 def create_menu_item(restaurant_id: str, data: MenuItemCreate) -> MenuItemOut:
+    if kaggle_restaurant_repository.get_by_id(restaurant_id) is None:
+        raise HTTPException(status_code=404, detail="Restaurant not found")
     existing = menu_repository.get_by_restaurant_and_food(restaurant_id, data.food_item)
     if existing:
         raise HTTPException(status_code=409, detail="Menu item already exists")
