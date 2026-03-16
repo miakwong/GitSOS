@@ -1,10 +1,16 @@
-# Schema for delivery info returned by the delivery endpoint
+# schemas for delivery info and delivery outcome recording
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
-# Unified delivery info for both system orders and Kaggle historical orders
+# used to record delivery outcome after order reaches Delivered status
+class DeliveryOutcomeCreate(BaseModel):
+    actual_delivery_time: float = Field(..., gt=0, description="Actual delivery time in minutes")
+    delivery_delay: float = Field(..., description="Delay vs expected time in minutes (0 = on time)")
+
+
+# delivery info for both system orders and Kaggle historical orders
 class DeliveryInfo(BaseModel):
     order_id: str
     delivery_distance: float
@@ -18,5 +24,5 @@ class DeliveryInfo(BaseModel):
     delivery_time: Optional[float] = None   # actual delivery time in minutes
     delivery_delay: Optional[float] = None  # delay vs expected, in minutes
 
-    # True if this came from the Kaggle dataset (read-only historical record)
+    # True if this came from the Kaggle dataset, False if it's a system-created order
     is_historical: bool = False
