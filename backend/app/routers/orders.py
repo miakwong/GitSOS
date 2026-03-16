@@ -1,8 +1,10 @@
 # Orders router for API endpoints
 from uuid import UUID
 
-from app.dependencies import get_current_owner
-from app.schemas.order import Order, OrderCreate, OrderUpdate
+from fastapi import APIRouter, Depends, status
+
+from app.dependencies import get_current_owner, get_current_admin
+from app.schemas.order import Order, OrderCreate, OrderUpdate, OrderStatusUpdate
 from app.services.notification_service import NotificationService
 from app.services.order_service import OrderService
 from fastapi import APIRouter, Depends, status
@@ -72,6 +74,35 @@ def cancel_order(order_id: str, customer_id: str) -> Order:
     order = order_service.cancel_order(order_id, customer_id)
     _notif_service.notify_order_status_changed(order)
     return order
+
+
+@router.patch(
+    "/owner/restaurant/{order_id}/status",
+    response_model=Order,
+    summary="Owner: advance order status",
+    description="Advances an order's status following valid workflow transitions. Only works for orders belonging to the owner's restaurant.",
+)
+def owner_update_order_status(
+    order_id: str,
+    status_update: OrderStatusUpdate,
+    current_owner: tuple[UUID, int] = Depends(get_current_owner),
+) -> Order:
+    _, rest_id = current_owner
+    return order_service.advance_order_status(order_id, status_update.order_status, rest_id)
+
+
+@router.patch(
+    "/admin/{order_id}/status",
+    response_model=Order,
+    summary="Admin: override order status",
+    description="Allows an admin to set any order status, bypassing normal workflow transitions.",
+)
+def admin_update_order_status(
+    order_id: str,
+    status_update: OrderStatusUpdate,
+    _current_admin: UUID = Depends(get_current_admin),
+) -> Order:
+    return order_service.admin_override_status(order_id, status_update.order_status)
 
 
 @router.get(
