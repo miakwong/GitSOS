@@ -1,6 +1,3 @@
-# routers/restaurants.py
-# Kaggle read-only restaurant and menu endpoints
-# System restaurant CRUD (Owner-managed) to be added in a separate branch
 
 from app.schemas.kaggle import KaggleMenuItem, KaggleRestaurant
 from app.services import restaurant_service
@@ -26,5 +23,8 @@ def get_restaurant(restaurant_id: str):
 
 @router.get("/{restaurant_id}/menu", response_model=list[KaggleMenuItem])
 def get_menu(restaurant_id: str):
-    """Return all menu items for a restaurant with median prices."""
-    return restaurant_service.get_menu(restaurant_id)
+    """Return all menu items for a restaurant. Returns 404 if restaurant not found."""
+    result = restaurant_service.get_menu_for_restaurant(restaurant_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Restaurant not found")
+    return result
