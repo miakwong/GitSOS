@@ -97,12 +97,3 @@ def get_current_owner(
             detail="Owner account has no associated restaurant",
         )
     return UUID(payload["sub"]), rest_id
-    
-    user = user_repo.get_user_by_id(UUID(user_id))
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found",
-        )
-    
-    return user
