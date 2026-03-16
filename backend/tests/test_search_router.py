@@ -38,7 +38,7 @@ def fake_load_rows():
 
 
 def setup_module():
-    app.dependency_overrides[search_router.get_current_user_mock] = fake_admin_user
+    app.dependency_overrides[search_router.get_search_user] = fake_admin_user
     search_router.service.repo.load_all_rows = fake_load_rows
 
 

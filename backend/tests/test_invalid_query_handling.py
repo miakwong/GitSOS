@@ -1,10 +1,9 @@
+from app.routers import search_router
+from app.schemas.search_filters import CurrentUser, Role
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
-
-from app.schemas.search_filters import CurrentUser, Role
-from app.routers import search_router
 
 
 def fake_admin_user():
@@ -65,7 +64,7 @@ async def request_validation_exception_handler(request, exc):
 app.include_router(search_router.router)
 
 # Create override dependency and mock repo data
-app.dependency_overrides[search_router.get_current_user_mock] = fake_admin_user
+app.dependency_overrides[search_router.get_search_user] = fake_admin_user
 search_router.service.repo.load_all_rows = fake_load_rows
 
 client = TestClient(app)
@@ -99,7 +98,10 @@ def test_orders_invalid_order_value_range_returns_422():
     body = response.json()
 
     assert body["detail"]["message"] == "Invalid order value range."
-    assert body["detail"]["reason"] == "min_order_value cannot be greater than max_order_value."
+    assert (
+        body["detail"]["reason"]
+        == "min_order_value cannot be greater than max_order_value."
+    )
 
 
 def test_invalid_query_type_returns_422():
