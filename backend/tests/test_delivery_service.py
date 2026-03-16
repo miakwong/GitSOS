@@ -112,8 +112,7 @@ def insert_system_order(order_repo: OrderRepository, customer_id: str, restauran
     return order
 
 
-# --- Tests for system order delivery info ---
-
+# tests for system order delivery info and access control
 class TestDeliveryFromSystemOrder:
 
     def test_customer_gets_own_order_delivery_info(self, delivery_service, order_repo):
@@ -136,7 +135,7 @@ class TestDeliveryFromSystemOrder:
 
         result = delivery_service.get_delivery_info(str(order.order_id), customer)
 
-        # Kaggle-only fields should be absent for system orders
+        
         assert result.delivery_time is None
         assert result.delivery_delay is None
 
@@ -179,8 +178,7 @@ class TestDeliveryFromSystemOrder:
         assert result.is_historical is False
 
 
-# --- Tests for Kaggle historical order delivery info ---
-
+# tests for Kaggle historical order delivery info and access control
 class TestDeliveryFromKaggleOrder:
 
     def test_owner_gets_kaggle_order_delivery_info(self, delivery_service):
@@ -235,8 +233,7 @@ class TestDeliveryFromKaggleOrder:
         # kaggle-002 has a 5.0 minute delay
         assert result.delivery_delay == 5.0
 
-
-# --- Tests for not-found order ---
+# test cases for unknown order IDs, ensuring that 404 is returned for both system and Kaggle orders when the ID does not exist, and that the service does not leak information about which type of order was queried
 
 class TestOrderNotFound:
 
@@ -256,7 +253,7 @@ class TestOrderNotFound:
         assert exc.value.status_code == 404
 
 
-# --- Read-only enforcement (no write methods exist on delivery service) ---
+# test cases to confirm that the DeliveryService does not have any methods for creating, updating, or deleting delivery records, ensuring that it is strictly read-only and that all data modifications must go through the OrderRepository or Kaggle CSV
 
 class TestDeliveryReadOnly:
 

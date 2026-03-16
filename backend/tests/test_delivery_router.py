@@ -1,4 +1,4 @@
-# Integration tests for the delivery router (GET /delivery/{order_id})
+# Integration tests for the delivery router 
 import json
 import tempfile
 import uuid
@@ -25,7 +25,6 @@ from app.schemas.user import UserInDB
 from app.services.delivery_service import DeliveryService
 
 
-# --- Token helpers ---
 
 def make_customer_token(user_id: str = None) -> str:
     uid = user_id or str(uuid.uuid4())
@@ -54,7 +53,6 @@ def make_admin_token(user_id: str = None) -> str:
     )
 
 
-# --- Fixtures ---
 
 @pytest.fixture
 def temp_users_file():
@@ -93,7 +91,7 @@ def kaggle_repo(temp_kaggle_csv):
     return KaggleOrderRepository(csv_path=temp_kaggle_csv)
 
 
-# Full test client with overridden delivery service and user repo
+# sets up a test client with temp repos and overrides the delivery service
 @pytest.fixture
 def client(temp_users_file, order_repo, kaggle_repo):
     user_repo = UserRepository(temp_users_file)
@@ -150,7 +148,6 @@ def insert_order(order_repo: OrderRepository, customer_id: str, restaurant_id: i
     return order
 
 
-# --- Auth tests ---
 
 class TestDeliveryAuth:
 
@@ -167,8 +164,6 @@ class TestDeliveryAuth:
         )
         assert resp.status_code == 401
 
-
-# --- Customer access to system orders ---
 
 class TestCustomerDeliveryAccess:
 
@@ -232,7 +227,6 @@ class TestCustomerDeliveryAccess:
         assert resp.status_code == 404
 
 
-# --- Owner access ---
 
 class TestOwnerDeliveryAccess:
 
@@ -296,8 +290,6 @@ class TestOwnerDeliveryAccess:
         assert resp.status_code == 403
 
 
-# --- Admin access ---
-
 class TestAdminDeliveryAccess:
 
     def test_admin_gets_any_system_order(self, client):
@@ -343,7 +335,7 @@ class TestAdminDeliveryAccess:
         assert resp.status_code == 404
 
 
-# --- No write endpoints exist ---
+
 
 class TestDeliveryReadOnlyEndpoints:
 
@@ -393,4 +385,4 @@ class TestDeliveryReadOnlyEndpoints:
             headers={"Authorization": f"Bearer {token}"},
             json={},
         )
-        assert resp.status_code == 405
+        assert resp.status_code == 405 
