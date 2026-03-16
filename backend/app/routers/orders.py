@@ -7,7 +7,6 @@ from app.dependencies import get_current_owner, get_current_admin
 from app.schemas.order import Order, OrderCreate, OrderUpdate, OrderStatusUpdate
 from app.services.notification_service import NotificationService
 from app.services.order_service import OrderService
-from fastapi import APIRouter, Depends, status
 
 router = APIRouter(prefix="/orders", tags=["orders"])
 
