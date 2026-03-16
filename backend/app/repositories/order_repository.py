@@ -1,18 +1,14 @@
 # Order repository for data access layer
-import csv
 import json
+import csv
 import uuid
-from datetime import datetime, timezone
 from pathlib import Path
+from datetime import datetime, timezone
 from typing import Optional
 
 from app.schemas.order import (
-    Order,
-    OrderCreate,
-    OrderStatus,
-    OrderUpdate,
-    TrafficCondition,
-    WeatherCondition,
+    Order, OrderCreate, OrderUpdate, OrderStatus,
+    DeliveryMethod, TrafficCondition, WeatherCondition
 )
 
 # Path to data files
@@ -71,7 +67,7 @@ class OrderRepository:
                 return Order(**order)
         return None
 
-    # Retrieve all system-created orders
+    # Retrieve all system orders, optionally filtered by restaurant ID
     def get_all_orders(self) -> list[Order]:
         orders = self._load_orders()
         return [Order(**o) for o in orders]
@@ -103,9 +99,7 @@ class OrderRepository:
         return None
 
     # Update order status by ID
-    def update_order_status(
-        self, order_id: str, new_status: OrderStatus
-    ) -> Optional[Order]:
+    def update_order_status(self, order_id: str, new_status: OrderStatus) -> Optional[Order]:
         orders = self._load_orders()
         for i, order in enumerate(orders):
             if order["order_id"] == order_id:
@@ -114,8 +108,21 @@ class OrderRepository:
                 return Order(**orders[i])
         return None
 
+    # Save delivery outcome fields after order reaches Delivered status
+    def record_delivery_outcome(
+        self, order_id: str, actual_delivery_time: float, delivery_delay: float
+    ) -> Optional[Order]:
+        orders = self._load_orders()
+        for i, order in enumerate(orders):
+            if order["order_id"] == order_id:
+                orders[i]["actual_delivery_time"] = actual_delivery_time
+                orders[i]["delivery_delay"] = delivery_delay
+                self._save_orders(orders)
+                return Order(**orders[i])
+        return None
 
-# Repository for Kaggle historical orders (read-only)
+
+# Repository for Kaggle historical orders
 class KaggleOrderRepository:
 
     def __init__(self, csv_path: Path = KAGGLE_CSV_PATH):
@@ -156,7 +163,7 @@ class KaggleOrderRepository:
             if o.get("restaurant_id") and int(o["restaurant_id"]) == restaurant_id
         }
 
-    # Retrieve a Kaggle order by ID (read-only)
+    # Retrieve a Kaggle order by ID 
     def get_order_by_id(self, order_id: str) -> Optional[dict]:
         orders = self._load_orders()
         for order in orders:
