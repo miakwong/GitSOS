@@ -96,20 +96,6 @@ class DeliveryService:
                 detail=f"Order with ID '{order_id}' not found",
             )
 
-        # outcome can only be recorded after the order is delivered
-        if order.order_status != OrderStatus.DELIVERED:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Delivery outcome can only be recorded after order status is Delivered",
-            )
-
-        # once recorded, outcome fields are immutable
-        if order.actual_delivery_time is not None:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Delivery outcome has already been recorded and cannot be changed",
-            )
-
         # customers cannot record outcomes
         if user.role == "customer":
             raise HTTPException(
@@ -122,6 +108,20 @@ class DeliveryService:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Access denied: this order does not belong to your restaurant",
+            )
+
+        # outcome can only be recorded after the order is delivered
+        if order.order_status != OrderStatus.DELIVERED:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Delivery outcome can only be recorded after order status is Delivered",
+            )
+
+        # once recorded, outcome fields are immutable
+        if order.actual_delivery_time is not None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Delivery outcome has already been recorded and cannot be changed",
             )
 
         updated = self.order_repo.record_delivery_outcome(

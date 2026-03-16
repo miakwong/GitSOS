@@ -67,7 +67,7 @@ class OrderRepository:
                 return Order(**order)
         return None
 
-    # Retrieve all system orders, optionally filtered by restaurant ID
+    # Retrieve all system orders
     def get_all_orders(self) -> list[Order]:
         orders = self._load_orders()
         return [Order(**o) for o in orders]
