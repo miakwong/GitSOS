@@ -76,6 +76,10 @@ class OrderRepository:
         orders = self._load_orders()
         return [Order(**o) for o in orders if o.get("restaurant_id") == rest_id]
 
+    def get_orders_by_customer_id(self, customer_id: str) -> list[Order]:
+        orders = self._load_orders()
+        return [Order(**o) for o in orders if o.get("customer_id") == customer_id]
+
     # Update a system order by ID
     def update_order(self, order_id: str, update_data: OrderUpdate) -> Optional[Order]:
         orders = self._load_orders()
@@ -163,7 +167,16 @@ class KaggleOrderRepository:
             if o.get("restaurant_id") and int(o["restaurant_id"]) == restaurant_id
         }
 
-    # Retrieve a Kaggle order by ID 
+    # Retrieve all Kaggle orders
+    def get_all_orders(self) -> list[dict]:
+        return self._load_orders()
+
+    # Retrieve all Kaggle orders for a specific restaurant
+    def get_orders_by_restaurant(self, restaurant_id: int) -> list[dict]:
+        orders = self._load_orders()
+        return [o for o in orders if o.get("restaurant_id") and int(o["restaurant_id"]) == restaurant_id]
+
+    # Retrieve a Kaggle order by ID
     def get_order_by_id(self, order_id: str) -> Optional[dict]:
         orders = self._load_orders()
         for order in orders:
