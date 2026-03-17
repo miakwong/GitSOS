@@ -1,6 +1,7 @@
 from app.dependencies import get_current_owner
 from app.schemas.kaggle import KaggleMenuItem, KaggleRestaurant
 from app.schemas.menu import MenuItemCreate, MenuItemOut, MenuItemUpdate
+from app.schemas.restaurant_profile import RestaurantProfileOut, RestaurantProfileUpdate
 from app.services import menu_service, restaurant_service
 from fastapi import APIRouter, Depends, HTTPException
 
@@ -73,3 +74,25 @@ def delete_menu_item(
     found = menu_service.delete_menu_item(restaurant_id, food_item)
     if not found:
         raise HTTPException(status_code=404, detail="Menu item not found")
+
+
+@router.get("/{restaurant_id}/profile", response_model=RestaurantProfileOut)
+def get_profile(restaurant_id: str):
+    result = restaurant_service.get_profile(restaurant_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Restaurant not found")
+    return result
+
+
+@router.put("/{restaurant_id}/profile", response_model=RestaurantProfileOut)
+def update_profile(
+    restaurant_id: str,
+    body: RestaurantProfileUpdate,
+    owner: tuple = Depends(get_current_owner),
+):
+    if str(owner[1]) != restaurant_id:
+        raise HTTPException(status_code=403, detail="Not authorized for this restaurant")
+    result = restaurant_service.update_profile(restaurant_id, body)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Restaurant not found")
+    return result
