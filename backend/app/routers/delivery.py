@@ -12,6 +12,24 @@ router = APIRouter(prefix="/delivery", tags=["delivery"])
 delivery_service = DeliveryService()
 
 
+# List delivery records scoped to the current user's role
+@router.get(
+    "",
+    response_model=list[DeliveryInfo],
+    summary="List delivery records for the current user",
+    description=(
+        "Returns delivery records scoped to the authenticated user. "
+        "Customers see only their own orders. "
+        "Owners see orders for their restaurant (system and Kaggle). "
+        "Admins see all records."
+    ),
+)
+def list_delivery_records(
+    current_user: UserInDB = Depends(get_current_user),
+) -> list[DeliveryInfo]:
+    return delivery_service.list_delivery_records(current_user)
+
+
 # Get delivery info for a specific order. Customers can only view their own orders, owners can only view orders belonging to their restaurant, and Kaggle historical delivery records are exposed in read-only mode.
 @router.get(
     "/{order_id}",
