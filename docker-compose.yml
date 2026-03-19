@@ -6,7 +6,7 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ./backend/app/data:/app/data
+      - ./backend/app/data:/app/app/data
     environment:
       - ENVIRONMENT=development
     restart: unless-stopped

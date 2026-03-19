@@ -14,5 +14,9 @@ backend/.coverage
 # System files
 .DS_Store
 
+# Environment variables
+.env
+backend/.env
+
 # Database files
 backend/app/data/*.csv
