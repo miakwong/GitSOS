@@ -2,6 +2,7 @@ from app.routers import auth, payments, restaurants
 from app.routers.delivery import router as delivery_router
 from app.routers.orders import router as orders_router
 from app.routers.search_router import router as search_router
+from app.routers.pricing_router import router as pricing_router
 from fastapi import FastAPI
 
 app = FastAPI(title="GitSOS Backend")
@@ -23,3 +24,4 @@ app.include_router(auth.router)
 app.include_router(restaurants.router)
 app.include_router(search_router)
 app.include_router(delivery_router)
+app.include_router(pricing_router)
