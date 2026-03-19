@@ -36,8 +36,6 @@ def mock_repos():
 
 
 # list_restaurants
-
-
 def test_list_restaurants_returns_all():
     results = service.list_restaurants()
     assert len(results) == 2
@@ -48,8 +46,6 @@ def test_list_restaurants_returns_kaggle_restaurant_instances():
 
 
 # get_restaurant
-
-
 def test_get_restaurant_found():
     result = service.get_restaurant("10")
     assert result is not None
@@ -60,25 +56,35 @@ def test_get_restaurant_not_found():
     assert service.get_restaurant("999") is None
 
 
-# get_menu
-
-
-def test_get_menu_returns_items():
-    results = service.get_menu("10")
+# get_menu_for_restaurant
+def test_get_menu_for_restaurant_returns_items():
+    results = service.get_menu_for_restaurant("10")
+    assert results is not None
     assert len(results) == 2
 
 
-def test_get_menu_empty_for_unknown_restaurant():
-    assert service.get_menu("999") == []
+def test_get_menu_for_restaurant_unknown_returns_none():
+    # restaurant doesn't exist -> None 
+    assert service.get_menu_for_restaurant("999") is None
 
 
-def test_get_menu_returns_kaggle_menu_item_instances():
-    assert all(isinstance(m, KaggleMenuItem) for m in service.get_menu("10"))
+def test_get_menu_for_restaurant_returns_kaggle_menu_item_instances():
+    results = service.get_menu_for_restaurant("10")
+    assert all(isinstance(m, KaggleMenuItem) for m in results)
+
+
+def test_get_menu_for_restaurant_items_belong_to_restaurant():
+    results = service.get_menu_for_restaurant("10")
+    assert all(m.restaurant_id == "10" for m in results)
+
+
+def test_get_menu_for_restaurant_existing_restaurant_empty_menu():
+    # restaurant 20 exists but has no menu items in fixture
+    results = service.get_menu_for_restaurant("20")
+    assert results == []
 
 
 # get_median_price
-
-
 def test_get_median_price_known_item():
     assert service.get_median_price("Pasta") == 35.0
 

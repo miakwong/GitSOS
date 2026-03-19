@@ -6,7 +6,6 @@ from pydantic import ValidationError
 
 
 class TestKaggleOrder:
-
     def _valid(self, **overrides) -> dict:
         base = {
             "order_id": "1d8e87M",
@@ -46,8 +45,6 @@ class TestKaggleOrder:
 
 
 # KaggleRestaurant
-
-
 class TestKaggleRestaurant:
 
     def test_valid(self):
@@ -62,6 +59,18 @@ class TestKaggleRestaurant:
     def test_missing_field(self):
         with pytest.raises(ValidationError):
             KaggleRestaurant(restaurant_id="16")
+
+    def test_empty_restaurant_id_rejected(self):
+        with pytest.raises(ValidationError):
+            KaggleRestaurant(restaurant_id="", name="Restaurant_16")
+
+    def test_whitespace_restaurant_id_rejected(self):
+        with pytest.raises(ValidationError):
+            KaggleRestaurant(restaurant_id="   ", name="Restaurant_16")
+
+    def test_empty_name_rejected(self):
+        with pytest.raises(ValidationError):
+            KaggleRestaurant(restaurant_id="16", name="")
 
 
 # KaggleMenuItem
@@ -83,3 +92,27 @@ class TestKaggleMenuItem:
     def test_invalid_median_price_type(self):
         with pytest.raises(ValidationError):
             KaggleMenuItem(restaurant_id="16", food_item="Pasta", median_price="cheap")
+
+    def test_empty_restaurant_id_rejected(self):
+        with pytest.raises(ValidationError):
+            KaggleMenuItem(restaurant_id="", food_item="Pasta", median_price=25.0)
+
+    def test_whitespace_restaurant_id_rejected(self):
+        with pytest.raises(ValidationError):
+            KaggleMenuItem(restaurant_id="  ", food_item="Pasta", median_price=25.0)
+
+    def test_empty_food_item_rejected(self):
+        with pytest.raises(ValidationError):
+            KaggleMenuItem(restaurant_id="16", food_item="", median_price=25.0)
+
+    def test_whitespace_food_item_rejected(self):
+        with pytest.raises(ValidationError):
+            KaggleMenuItem(restaurant_id="16", food_item="  ", median_price=25.0)
+
+    def test_negative_median_price_rejected(self):
+        with pytest.raises(ValidationError):
+            KaggleMenuItem(restaurant_id="16", food_item="Pasta", median_price=-1.0)
+
+    def test_zero_median_price_allowed(self):
+        m = KaggleMenuItem(restaurant_id="16", food_item="Pasta", median_price=0.0)
+        assert m.median_price == 0.0
