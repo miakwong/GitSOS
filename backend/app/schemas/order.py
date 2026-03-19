@@ -77,6 +77,9 @@ class Order(BaseModel):
     traffic_condition: TrafficCondition = Field(..., description="Traffic condition")
     weather_condition: WeatherCondition = Field(..., description="Weather condition")
     order_status: OrderStatus = Field(..., description="Current order status")
+    # recorded after the order reaches Delivered status
+    actual_delivery_time: Optional[float] = Field(None, description="Actual delivery time in minutes")
+    delivery_delay: Optional[float] = Field(None, description="Delay compared to expected time in minutes")
 
     model_config = {"from_attributes": True}
 
