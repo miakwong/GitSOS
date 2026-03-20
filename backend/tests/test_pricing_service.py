@@ -30,14 +30,6 @@ class FakeKaggleOrderRepository:
         return self.order
 
 
-class FakePricingRepository:
-    def __init__(self):
-        self.saved = []
-
-    def save_breakdown(self, breakdown):
-        self.saved.append(breakdown)
-
-
 @pytest.fixture
 def sample_order():
     return Order(
@@ -71,14 +63,9 @@ def admin_user():
 
 
 def test_get_price_breakdown_success(sample_order, customer_user):
-    fake_order_repo = FakeOrderRepository(order=sample_order)
-    fake_kaggle_repo = FakeKaggleOrderRepository(order=None)
-    fake_pricing_repo = FakePricingRepository()
-
     service = PricingService(
-        order_repo=fake_order_repo,
-        kaggle_repo=fake_kaggle_repo,
-        pricing_repo=fake_pricing_repo,
+        order_repo=FakeOrderRepository(order=sample_order),
+        kaggle_repo=FakeKaggleOrderRepository(order=None),
     )
 
     result = service.get_price_breakdown(str(sample_order.order_id), customer_user)
@@ -94,14 +81,11 @@ def test_get_price_breakdown_success(sample_order, customer_user):
     assert result.tax == 1.36
     assert result.total == 28.61
 
-    assert len(fake_pricing_repo.saved) == 1
-
 
 def test_get_price_breakdown_admin_can_view(sample_order, admin_user):
     service = PricingService(
         order_repo=FakeOrderRepository(order=sample_order),
         kaggle_repo=FakeKaggleOrderRepository(order=None),
-        pricing_repo=FakePricingRepository(),
     )
 
     result = service.get_price_breakdown(str(sample_order.order_id), admin_user)
@@ -113,7 +97,6 @@ def test_get_price_breakdown_forbidden_for_other_customer(sample_order, other_cu
     service = PricingService(
         order_repo=FakeOrderRepository(order=sample_order),
         kaggle_repo=FakeKaggleOrderRepository(order=None),
-        pricing_repo=FakePricingRepository(),
     )
 
     with pytest.raises(HTTPException) as exc_info:
@@ -127,21 +110,19 @@ def test_get_price_breakdown_rejects_historical_order(customer_user):
     service = PricingService(
         order_repo=FakeOrderRepository(order=None),
         kaggle_repo=FakeKaggleOrderRepository(order={"order_id": "K1"}),
-        pricing_repo=FakePricingRepository(),
     )
 
     with pytest.raises(HTTPException) as exc_info:
         service.get_price_breakdown("K1", customer_user)
 
-    assert exc_info.value.status_code == 403
-    assert "historical" in exc_info.value.detail.lower()
+    assert exc_info.value.status_code == 404
+    assert exc_info.value.detail == "Order not found"
 
 
 def test_get_price_breakdown_order_not_found(customer_user):
     service = PricingService(
         order_repo=FakeOrderRepository(order=None),
         kaggle_repo=FakeKaggleOrderRepository(order=None),
-        pricing_repo=FakePricingRepository(),
     )
 
     with pytest.raises(HTTPException) as exc_info:

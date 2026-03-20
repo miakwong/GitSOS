@@ -3,7 +3,6 @@ from __future__ import annotations
 from fastapi import HTTPException
 
 from app.repositories.order_repository import OrderRepository, KaggleOrderRepository
-from app.repositories.pricing_repository import PricingRepository
 from app.schemas.pricing import DeliveryFeeBreakdown, PriceBreakdownResponse
 
 
@@ -20,11 +19,9 @@ class PricingService:
         self,
         order_repo: OrderRepository | None = None,
         kaggle_repo: KaggleOrderRepository | None = None,
-        pricing_repo: PricingRepository | None = None,
     ) -> None:
         self.order_repo = order_repo or OrderRepository()
         self.kaggle_repo = kaggle_repo or KaggleOrderRepository()
-        self.pricing_repo = pricing_repo or PricingRepository()
 
     def _round_money(self, value: float) -> float:
         return round(value, 2)
@@ -119,17 +116,11 @@ class PricingService:
                 total=total,
             )
 
-            # It is the optional audit storage
-            self.pricing_repo.save_breakdown(response.model_dump())
-
             return response
 
-        # Then check Kaggle historical orders
+        # Then check Kaggle historical orders — treat as not found to avoid leaking data
         historical_order = self.kaggle_repo.get_order_by_id(order_id)
         if historical_order:
-            raise HTTPException(
-                status_code=403,
-                detail="Price breakdown is not available for Kaggle historical orders",
-            )
+            raise HTTPException(status_code=404, detail="Order not found")
 
         raise HTTPException(status_code=404, detail="Order not found")
