@@ -25,25 +25,45 @@
 ### Mia Kuang
 
 **Last Week:**
+
 - Feat7-B2 - Payment Status View
 - Feat7-B3 - Payment Access Control
 - Testing & Documentation
 
 **This Week:**
+
 - Feat8
 - Solve conflicts and start essential refactor
+
+---
+
+### Mason Liu
+
+**Last Week:**
+
+- Implement Feat3-B1 - Search Filters
+- Implement Feat6-B2 - Price Breakdown View
+
+**This Week:**
+
+- Implement Feat6-B1 - Price Calculation (In progress)
+- Implement Feat6-B4 - Pricing Analytics (In progress)
+- Implement Feat3-B3 - Scoped Search Results
+- Implement Feat3-B2 - Panigation and Sorting
 
 ---
 
 ### Nikki Sidhu
 
 **Last Week:**
+
 - Implement Feat1-B1 - Auth Registration and Login
 - Implement Feat1-B2 - Token Lifecycle and Logout
 - Structure and organize backend documentation
 - Implement the initial FastAPI backend setup, including creating the main application entry point and verifying that the API runs correctly
 
 **This Week:**
+
 - Implement Feat1-B3 - Role-Based Access Control
 - Implement Feat1-B4 - Profile access and identity mapping
 - Implement Feat2-B1 - Restaurant and menu data model
@@ -56,11 +76,13 @@
 ### Kiana Nazembokaei
 
 **Last Week:**
+
 - Implement Feat4-B3 - Owner order views
 - Implement Feat4-B4 - Workflow transition enforcement and overrides
 - Implement Feat5-B1 - Delivery data exposure
 
 **This Week:**
+
 - Implement Feat4-B3 - Owner order views
 - Implement Feat4-B4 - Workflow transition enforcement and overrides
 - Implement Feat5-B1 - Delivery data exposure
@@ -73,23 +95,23 @@
 
 ### Reviews Completed This Week
 
-| PR# | Title | Branch | Author | Reviewers |
-|-----|-------|--------|--------|-----------|
-| #74 | Merge feat/1-auth-account-management (Feat1-B3 RBAC) | feat/1-auth-account-management | msidhu21 | Kiananb |
-| #73 | [Feat4-B3] Owner order Views | feat/4-B3-owner-views | Kiananb | — |
-| #72 | [Feat1-B3] Implement Role-Based Access Control | feat/1-B3-role-control | msidhu21 | — |
-| #71 | Merge Feat/4-order-workflow (Feat/4-B2-customer-rules) | feat/4-order-workflow | Kiananb | miakwong |
-| #70 | feat: payment access control (Feat7-B3) | feat/7/access-control | miakwong | Kiananb (×3) |
-| #69 | Merge feat/1-auth-account-management (Token lifecycle) | feat/1-auth-account-management | msidhu21 | Kiananb |
-| #68 | [Feat3-B1] Search Filters (Restaurants, Menu, Orders) | feat/search-filter | mason-liuuu | msidhu21 |
-| #67 | [Feat1-B2] Token lifecycle and logout handling | feat/1-B2-token-lifecycle-logout | msidhu21 | — |
-| #66 | [Feat7-B2] Payment status view endpoints | feat/7/status-view | miakwong | msidhu21 (×2) |
-| #65 | [Feat4-B2] Order modification and cancellation | feat/4-B2-customer-rules | Kiananb | msidhu21 |
-| #64 | feat(payment): payment service core — process & lookup | feat/7/payment-core | miakwong | msidhu21 (×2) |
-| #63 | Merge feat/1-auth-account-management into main | feat/1-auth-account-management | msidhu21 | miakwong, msidhu21 |
-| #62 | Merge feat/4-order-workflow into main | feat/4-order-workflow | Kiananb | miakwong (×3) |
-| #61 | [Feat1-B1] User registration and login with JWT | feat/1-B1-auth-registration-login | msidhu21 | Kiananb |
-| #59 | feat/payment-repository: JSON persistence layer | feat/payment-repository | miakwong | Kiananb |
-| #58 | feat/kaggle-data-layer: Restaurant, Menu & Order Data | feat/kaggle-data-layer | miakwong | mason-liuuu, msidhu21 |
-| #56 | [Feat4-B1] System order creation with validation | feat/4-B1-system-order | Kiananb | miakwong (×2) |
-| #54 | Feat/7 schemas and constants | feat/7/schemas-and-constants | miakwong | — |
+| PR# | Title                                                  | Branch                            | Author      | Reviewers             |
+| --- | ------------------------------------------------------ | --------------------------------- | ----------- | --------------------- |
+| #74 | Merge feat/1-auth-account-management (Feat1-B3 RBAC)   | feat/1-auth-account-management    | msidhu21    | Kiananb               |
+| #73 | [Feat4-B3] Owner order Views                           | feat/4-B3-owner-views             | Kiananb     | —                     |
+| #72 | [Feat1-B3] Implement Role-Based Access Control         | feat/1-B3-role-control            | msidhu21    | —                     |
+| #71 | Merge Feat/4-order-workflow (Feat/4-B2-customer-rules) | feat/4-order-workflow             | Kiananb     | miakwong              |
+| #70 | feat: payment access control (Feat7-B3)                | feat/7/access-control             | miakwong    | Kiananb (×3)          |
+| #69 | Merge feat/1-auth-account-management (Token lifecycle) | feat/1-auth-account-management    | msidhu21    | Kiananb               |
+| #68 | [Feat3-B1] Search Filters (Restaurants, Menu, Orders)  | feat/search-filter                | mason-liuuu | msidhu21              |
+| #67 | [Feat1-B2] Token lifecycle and logout handling         | feat/1-B2-token-lifecycle-logout  | msidhu21    | —                     |
+| #66 | [Feat7-B2] Payment status view endpoints               | feat/7/status-view                | miakwong    | msidhu21 (×2)         |
+| #65 | [Feat4-B2] Order modification and cancellation         | feat/4-B2-customer-rules          | Kiananb     | msidhu21              |
+| #64 | feat(payment): payment service core — process & lookup | feat/7/payment-core               | miakwong    | msidhu21 (×2)         |
+| #63 | Merge feat/1-auth-account-management into main         | feat/1-auth-account-management    | msidhu21    | miakwong, msidhu21    |
+| #62 | Merge feat/4-order-workflow into main                  | feat/4-order-workflow             | Kiananb     | miakwong (×3)         |
+| #61 | [Feat1-B1] User registration and login with JWT        | feat/1-B1-auth-registration-login | msidhu21    | Kiananb               |
+| #59 | feat/payment-repository: JSON persistence layer        | feat/payment-repository           | miakwong    | Kiananb               |
+| #58 | feat/kaggle-data-layer: Restaurant, Menu & Order Data  | feat/kaggle-data-layer            | miakwong    | mason-liuuu, msidhu21 |
+| #56 | [Feat4-B1] System order creation with validation       | feat/4-B1-system-order            | Kiananb     | miakwong (×2)         |
+| #54 | Feat/7 schemas and constants                           | feat/7/schemas-and-constants      | miakwong    | —                     |
