@@ -51,7 +51,7 @@ class PricingService:
         return get_median_price(restaurant_id, food_item)
 
     # ------------------------------------------------------------------ #
-    # Feat6-FR2: delivery fee sub-components
+    # Delivery fee sub-components
     # ------------------------------------------------------------------ #
     def _calculate_distance_fee(self, delivery_distance: float) -> float:
         """
@@ -143,7 +143,7 @@ class PricingService:
         Return the computed price breakdown for a system-created order.
 
         Steps:
-          1. Look up the system order (reject Kaggle historical orders)
+          1. Look up the system order and reject Kaggle historical orders
           2. Check that the current user has access
           3. Get food price from Kaggle data
           4. Calculate delivery fee from order parameters
