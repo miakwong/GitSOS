@@ -115,7 +115,7 @@ def test_unsupported_filter_raises_422(service, admin_user):
 # ------------------------------------------------------------------
 
 def test_sort_restaurants_by_name_asc(service, admin_user):
-    # "Burger Town" < "Pizza Place" < "Sushi House" alphabetically
+    # "Burger Town" < "Pizza Place" < "Sushi House" since it's ascending and B comes before P and comes before S
     filters = RestaurantFilterParams()
     pagination = PaginationParams(page=1, page_size=10, sort_by="restaurant_name", sort_order="asc")
 
