@@ -4,6 +4,12 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from app.services.query_validation_service import QueryValidationService
 from app.repositories.search_repo import SearchRepository
+from app.services.sort_helper import (
+    sort_results,
+    VALID_RESTAURANT_SORT_KEYS,
+    VALID_MENU_ITEM_SORT_KEYS,
+    VALID_ORDER_SORT_KEYS,
+)
 from app.schemas.search_filters import (
     CurrentUser,
     MenuItemFilterParams,
@@ -183,6 +189,9 @@ class SearchService:
         # Scope (usually public for restaurants, but keep hook)
         out = [x for x in out if self._enforce_scope(user, x, "restaurants")]
 
+        # Sort before paginating
+        out = sort_results(out, pagination.sort_by, pagination.sort_order, VALID_RESTAURANT_SORT_KEYS)
+
         page_rows, total = self._paginate(out, pagination)
         return PaginatedResponse(
             meta=PageMeta(
@@ -257,6 +266,9 @@ class SearchService:
             ]
 
         out = [x for x in out if self._enforce_scope(user, x, "menu_items")]
+
+        # Sort before paginating
+        out = sort_results(out, pagination.sort_by, pagination.sort_order, VALID_MENU_ITEM_SORT_KEYS)
 
         page_rows, total = self._paginate(out, pagination)
         return PaginatedResponse(
@@ -350,6 +362,9 @@ class SearchService:
 
         # Enforce authorized scope for orders
         out = [x for x in out if self._enforce_scope(user, x, "orders")]
+
+        # Sort before paginating
+        out = sort_results(out, pagination.sort_by, pagination.sort_order, VALID_ORDER_SORT_KEYS)
 
         page_rows, total = self._paginate(out, pagination)
         return PaginatedResponse(
