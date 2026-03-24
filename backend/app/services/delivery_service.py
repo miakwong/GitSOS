@@ -154,16 +154,20 @@ class DeliveryService:
         valid_traffic = {t.value for t in TrafficCondition}
         valid_weather = {w.value for w in WeatherCondition}
 
-        if traffic_condition and traffic_condition not in valid_traffic:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=f"Invalid traffic_condition. Valid values: {', '.join(sorted(valid_traffic))}",
-            )
-        if weather_condition and weather_condition not in valid_weather:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=f"Invalid weather_condition. Valid values: {', '.join(sorted(valid_weather))}",
-            )
+        if traffic_condition:
+            traffic_condition = traffic_condition.capitalize()
+            if traffic_condition not in valid_traffic:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail=f"Invalid traffic_condition. Valid values: {', '.join(sorted(valid_traffic))}",
+                )
+        if weather_condition:
+            weather_condition = weather_condition.capitalize()
+            if weather_condition not in valid_weather:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail=f"Invalid weather_condition. Valid values: {', '.join(sorted(valid_weather))}",
+                )
 
         orders = self.order_repo.get_orders_by_conditions(
             traffic_condition=traffic_condition,

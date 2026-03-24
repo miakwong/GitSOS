@@ -90,13 +90,11 @@ class OrderRepository:
         weather_condition: Optional[str] = None,
     ) -> list[Order]:
         orders = self._load_orders()
-        normalized_traffic = traffic_condition.capitalize() if traffic_condition else None
-        normalized_weather = weather_condition.capitalize() if weather_condition else None
         result = []
         for o in orders:
-            if normalized_traffic and o.get("traffic_condition") != normalized_traffic:
+            if traffic_condition and o.get("traffic_condition") != traffic_condition:
                 continue
-            if normalized_weather and o.get("weather_condition") != normalized_weather:
+            if weather_condition and o.get("weather_condition") != weather_condition:
                 continue
             result.append(Order(**o))
         return result
