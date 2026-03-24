@@ -3,7 +3,7 @@ from app.schemas.kaggle import KaggleMenuItem, KaggleRestaurant
 from app.schemas.menu import MenuItemCreate, MenuItemOut, MenuItemUpdate
 from app.schemas.restaurant_profile import RestaurantProfileOut, RestaurantProfileUpdate
 from app.services import menu_service, restaurant_service
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 router = APIRouter(prefix="/restaurants", tags=["restaurants"])
 
@@ -12,6 +12,11 @@ router = APIRouter(prefix="/restaurants", tags=["restaurants"])
 def list_restaurants():
     # Return all restaurants derived from the Kaggle dataset
     return restaurant_service.list_restaurants()
+
+
+@router.get("/menu/search", response_model=list[KaggleMenuItem])
+def search_menu(food_item: str = Query(..., min_length=1)):
+    return restaurant_service.search_menu(food_item)
 
 
 @router.get("/{restaurant_id}", response_model=KaggleRestaurant)
