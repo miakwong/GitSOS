@@ -22,6 +22,7 @@ from app.schemas.order import (
 )
 from app.schemas.user import UserInDB
 from app.services.delivery_service import DeliveryService
+from tests.helpers import insert_analytics_order
 
 
 def make_admin_token(user_id: str) -> str:
@@ -102,34 +103,6 @@ def add_user(user_repo: UserRepository, role: str, restaurant_id: int = None) ->
     return user
 
 
-def insert_order(
-    order_repo: OrderRepository,
-    traffic: TrafficCondition = TrafficCondition.LOW,
-    weather: WeatherCondition = WeatherCondition.SUNNY,
-    actual_delivery_time: float = None,
-    delivery_delay: float = None,
-) -> Order:
-    order = Order(
-        order_id=uuid.uuid4(),
-        customer_id=str(uuid.uuid4()),
-        restaurant_id=16,
-        food_item="Tacos",
-        order_time=datetime.now(timezone.utc),
-        order_value=20.0,
-        delivery_distance=5.0,
-        delivery_method=DeliveryMethod.BIKE,
-        traffic_condition=traffic,
-        weather_condition=weather,
-        order_status=OrderStatus.PLACED,
-        actual_delivery_time=actual_delivery_time,
-        delivery_delay=delivery_delay,
-    )
-    raw = order_repo._load_orders()
-    raw.append(order.model_dump(mode="json"))
-    order_repo._save_orders(raw)
-    return order
-
-
 class TestAnalyticsAuth:
 
     def test_no_token_returns_401(self, client):
@@ -204,8 +177,8 @@ class TestAnalyticsFiltering:
     def test_no_filter_returns_all(self, client):
         c, order_repo, user_repo = client
         admin = add_user(user_repo, "admin")
-        insert_order(order_repo, traffic=TrafficCondition.LOW)
-        insert_order(order_repo, traffic=TrafficCondition.HIGH)
+        insert_analytics_order(order_repo, traffic=TrafficCondition.LOW)
+        insert_analytics_order(order_repo, traffic=TrafficCondition.HIGH)
         token = make_admin_token(str(admin.id))
 
         resp = c.get("/delivery/analytics", headers={"Authorization": f"Bearer {token}"})
@@ -215,8 +188,8 @@ class TestAnalyticsFiltering:
     def test_filter_by_traffic_condition(self, client):
         c, order_repo, user_repo = client
         admin = add_user(user_repo, "admin")
-        insert_order(order_repo, traffic=TrafficCondition.LOW)
-        insert_order(order_repo, traffic=TrafficCondition.HIGH)
+        insert_analytics_order(order_repo, traffic=TrafficCondition.LOW)
+        insert_analytics_order(order_repo, traffic=TrafficCondition.HIGH)
         token = make_admin_token(str(admin.id))
 
         resp = c.get(
@@ -232,8 +205,8 @@ class TestAnalyticsFiltering:
     def test_filter_by_weather_condition(self, client):
         c, order_repo, user_repo = client
         admin = add_user(user_repo, "admin")
-        insert_order(order_repo, weather=WeatherCondition.RAINY)
-        insert_order(order_repo, weather=WeatherCondition.SUNNY)
+        insert_analytics_order(order_repo, weather=WeatherCondition.RAINY)
+        insert_analytics_order(order_repo, weather=WeatherCondition.SUNNY)
         token = make_admin_token(str(admin.id))
 
         resp = c.get(
@@ -249,9 +222,9 @@ class TestAnalyticsFiltering:
     def test_filter_by_both_conditions(self, client):
         c, order_repo, user_repo = client
         admin = add_user(user_repo, "admin")
-        insert_order(order_repo, traffic=TrafficCondition.LOW, weather=WeatherCondition.SUNNY)
-        insert_order(order_repo, traffic=TrafficCondition.LOW, weather=WeatherCondition.RAINY)
-        insert_order(order_repo, traffic=TrafficCondition.HIGH, weather=WeatherCondition.SUNNY)
+        insert_analytics_order(order_repo, traffic=TrafficCondition.LOW, weather=WeatherCondition.SUNNY)
+        insert_analytics_order(order_repo, traffic=TrafficCondition.LOW, weather=WeatherCondition.RAINY)
+        insert_analytics_order(order_repo, traffic=TrafficCondition.HIGH, weather=WeatherCondition.SUNNY)
         token = make_admin_token(str(admin.id))
 
         resp = c.get(
@@ -265,7 +238,7 @@ class TestAnalyticsFiltering:
     def test_no_match_returns_empty(self, client):
         c, order_repo, user_repo = client
         admin = add_user(user_repo, "admin")
-        insert_order(order_repo, traffic=TrafficCondition.LOW)
+        insert_analytics_order(order_repo, traffic=TrafficCondition.LOW)
         token = make_admin_token(str(admin.id))
 
         resp = c.get(
@@ -276,14 +249,40 @@ class TestAnalyticsFiltering:
 
         assert resp.json()["total_orders"] == 0
 
+    def test_invalid_traffic_condition_returns_422(self, client):
+        c, _, user_repo = client
+        admin = add_user(user_repo, "admin")
+        token = make_admin_token(str(admin.id))
+
+        resp = c.get(
+            "/delivery/analytics",
+            params={"traffic_condition": "blah"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+        assert resp.status_code == 422
+
+    def test_invalid_weather_condition_returns_422(self, client):
+        c, _, user_repo = client
+        admin = add_user(user_repo, "admin")
+        token = make_admin_token(str(admin.id))
+
+        resp = c.get(
+            "/delivery/analytics",
+            params={"weather_condition": "blah"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+        assert resp.status_code == 422
+
 
 class TestAnalyticsAggregates:
 
     def test_avg_computed_from_outcomes(self, client):
         c, order_repo, user_repo = client
         admin = add_user(user_repo, "admin")
-        insert_order(order_repo, actual_delivery_time=30.0, delivery_delay=5.0)
-        insert_order(order_repo, actual_delivery_time=50.0, delivery_delay=15.0)
+        insert_analytics_order(order_repo, actual_delivery_time=30.0, delivery_delay=5.0)
+        insert_analytics_order(order_repo, actual_delivery_time=50.0, delivery_delay=15.0)
         token = make_admin_token(str(admin.id))
 
         resp = c.get("/delivery/analytics", headers={"Authorization": f"Bearer {token}"})
@@ -295,7 +294,7 @@ class TestAnalyticsAggregates:
     def test_avg_none_when_no_outcomes(self, client):
         c, order_repo, user_repo = client
         admin = add_user(user_repo, "admin")
-        insert_order(order_repo)
+        insert_analytics_order(order_repo)
         token = make_admin_token(str(admin.id))
 
         resp = c.get("/delivery/analytics", headers={"Authorization": f"Bearer {token}"})
