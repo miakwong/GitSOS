@@ -50,4 +50,4 @@ def update_profile(restaurant_id: str, data: RestaurantProfileUpdate) -> Optiona
 
 def search_menu(food_item: str) -> list[KaggleMenuItem]:
     keyword = food_item.strip().lower()
-    return [item for item in kaggle_menu_repository.list_all() if keyword in item.food_item.lower()]
+    return [item for item in kaggle_menu_repository.list_all() if item.food_item and keyword in item.food_item.lower()]
