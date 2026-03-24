@@ -1,6 +1,6 @@
 # Service layer for delivery info retrieval and outcome recording
 from app.repositories.order_repository import KaggleOrderRepository, OrderRepository
-from app.schemas.delivery import DeliveryAnalytics, DeliveryInfo, DeliveryOutcomeCreate
+from app.schemas.delivery import DeliveryInfo, DeliveryOutcomeCreate
 from app.schemas.order import Order, OrderStatus
 from app.schemas.user import UserInDB
 from fastapi import HTTPException, status
@@ -137,54 +137,6 @@ class DeliveryService:
                 ))
 
         return results
-
-    def get_delivery_analytics(
-        self,
-        user: UserInDB,
-        traffic_condition: str = None,
-        weather_condition: str = None,
-    ) -> DeliveryAnalytics:
-        if user.role != "admin":
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Access denied: only admins can view delivery analytics",
-            )
-
-        orders = self.order_repo.get_orders_by_conditions(
-            traffic_condition=traffic_condition,
-            weather_condition=weather_condition,
-        )
-
-        records = []
-        times = []
-        delays = []
-        for order in orders:
-            records.append(DeliveryInfo(
-                order_id=str(order.order_id),
-                delivery_distance=order.delivery_distance,
-                delivery_method=order.delivery_method.value,
-                traffic_condition=order.traffic_condition.value,
-                weather_condition=order.weather_condition.value,
-                delivery_time=order.actual_delivery_time,
-                delivery_delay=order.delivery_delay,
-                is_historical=False,
-            ))
-            if order.actual_delivery_time is not None:
-                times.append(order.actual_delivery_time)
-            if order.delivery_delay is not None:
-                delays.append(order.delivery_delay)
-
-        avg_time = round(sum(times) / len(times), 2) if times else None
-        avg_delay = round(sum(delays) / len(delays), 2) if delays else None
-
-        return DeliveryAnalytics(
-            traffic_condition=traffic_condition,
-            weather_condition=weather_condition,
-            total_orders=len(records),
-            avg_delivery_time=avg_time,
-            avg_delivery_delay=avg_delay,
-            records=records,
-        )
 
     def record_delivery_outcome(
         self, order_id: str, outcome: DeliveryOutcomeCreate, user: UserInDB

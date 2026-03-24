@@ -1,12 +1,10 @@
 # Delivery router - endpoints for viewing delivery info and recording delivery outcomes
-from typing import Optional
-
-from app.dependencies import get_current_user, require_role
-from app.schemas.delivery import DeliveryAnalytics, DeliveryInfo, DeliveryOutcomeCreate
+from app.dependencies import get_current_user
+from app.schemas.delivery import DeliveryInfo, DeliveryOutcomeCreate
 from app.schemas.order import Order
 from app.schemas.user import UserInDB
 from app.services.delivery_service import DeliveryService
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends
 
 router = APIRouter(prefix="/delivery", tags=["delivery"])
 
@@ -30,29 +28,6 @@ def list_delivery_records(
     current_user: UserInDB = Depends(get_current_user),
 ) -> list[DeliveryInfo]:
     return delivery_service.list_delivery_records(current_user)
-
-
-# Get delivery analytics filtered by traffic/weather condition (admin only)
-@router.get(
-    "/analytics",
-    response_model=DeliveryAnalytics,
-    summary="Get delivery analytics filtered by condition",
-    description=(
-        "Returns delivery analytics for system orders, optionally filtered by "
-        "traffic_condition and/or weather_condition. Admin only."
-    ),
-    dependencies=[Depends(require_role("admin"))],
-)
-def get_delivery_analytics(
-    traffic_condition: Optional[str] = Query(None, description="Filter by traffic condition"),
-    weather_condition: Optional[str] = Query(None, description="Filter by weather condition"),
-    current_user: UserInDB = Depends(get_current_user),
-) -> DeliveryAnalytics:
-    return delivery_service.get_delivery_analytics(
-        current_user,
-        traffic_condition=traffic_condition,
-        weather_condition=weather_condition,
-    )
 
 
 # Get delivery info for a specific order. Customers can only view their own orders, owners can only view orders belonging to their restaurant, and Kaggle historical delivery records are exposed in read-only mode.

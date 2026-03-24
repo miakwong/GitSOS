@@ -1,18 +1,14 @@
 # Order repository for data access layer
-import csv
 import json
+import csv
 import uuid
-from datetime import datetime, timezone
 from pathlib import Path
+from datetime import datetime, timezone
 from typing import Optional
 
 from app.schemas.order import (
-    Order,
-    OrderCreate,
-    OrderStatus,
-    OrderUpdate,
-    TrafficCondition,
-    WeatherCondition,
+    Order, OrderCreate, OrderUpdate, OrderStatus,
+    DeliveryMethod, TrafficCondition, WeatherCondition
 )
 
 # Path to data files
@@ -71,7 +67,7 @@ class OrderRepository:
                 return Order(**order)
         return None
 
-    # Retrieve all system created orders 
+    # Retrieve all system orders
     def get_all_orders(self) -> list[Order]:
         orders = self._load_orders()
         return [Order(**o) for o in orders]
@@ -83,21 +79,6 @@ class OrderRepository:
     def get_orders_by_customer_id(self, customer_id: str) -> list[Order]:
         orders = self._load_orders()
         return [Order(**o) for o in orders if o.get("customer_id") == customer_id]
-
-    def get_orders_by_conditions(
-        self,
-        traffic_condition: Optional[str] = None,
-        weather_condition: Optional[str] = None,
-    ) -> list[Order]:
-        orders = self._load_orders()
-        result = []
-        for o in orders:
-            if traffic_condition and o.get("traffic_condition") != traffic_condition:
-                continue
-            if weather_condition and o.get("weather_condition") != weather_condition:
-                continue
-            result.append(Order(**o))
-        return result
 
     # Update a system order by ID
     def update_order(self, order_id: str, update_data: OrderUpdate) -> Optional[Order]:
@@ -122,9 +103,7 @@ class OrderRepository:
         return None
 
     # Update order status by ID
-    def update_order_status(
-        self, order_id: str, new_status: OrderStatus
-    ) -> Optional[Order]:
+    def update_order_status(self, order_id: str, new_status: OrderStatus) -> Optional[Order]:
         orders = self._load_orders()
         for i, order in enumerate(orders):
             if order["order_id"] == order_id:
@@ -133,7 +112,7 @@ class OrderRepository:
                 return Order(**orders[i])
         return None
 
-    # Record actual delivery time and delay for a delivered order
+    # Save delivery outcome fields after order reaches Delivered status
     def record_delivery_outcome(
         self, order_id: str, actual_delivery_time: float, delivery_delay: float
     ) -> Optional[Order]:
@@ -147,7 +126,7 @@ class OrderRepository:
         return None
 
 
-# Repository for Kaggle historical orders (read-only)
+# Repository for Kaggle historical orders
 class KaggleOrderRepository:
 
     def __init__(self, csv_path: Path = KAGGLE_CSV_PATH):
@@ -188,19 +167,19 @@ class KaggleOrderRepository:
             if o.get("restaurant_id") and int(o["restaurant_id"]) == restaurant_id
         }
 
-    # Retrieve a Kaggle order by ID (read-only)
+    # Retrieve all Kaggle orders
+    def get_all_orders(self) -> list[dict]:
+        return self._load_orders()
+
+    # Retrieve all Kaggle orders for a specific restaurant
+    def get_orders_by_restaurant(self, restaurant_id: int) -> list[dict]:
+        orders = self._load_orders()
+        return [o for o in orders if o.get("restaurant_id") and int(o["restaurant_id"]) == restaurant_id]
+
+    # Retrieve a Kaggle order by ID
     def get_order_by_id(self, order_id: str) -> Optional[dict]:
         orders = self._load_orders()
         for order in orders:
             if order["order_id"] == order_id:
                 return order
         return None
-
-    # Get all Kaggle orders
-    def get_all_orders(self) -> list[dict]:
-        return self._load_orders()
-
-    # Get Kaggle orders for a specific restaurant
-    def get_orders_by_restaurant(self, restaurant_id: int) -> list[dict]:
-        orders = self._load_orders()
-        return [o for o in orders if o.get("restaurant_id") and int(o["restaurant_id"]) == restaurant_id]
