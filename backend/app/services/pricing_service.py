@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi import HTTPException
 
 from app.repositories.order_repository import OrderRepository, KaggleOrderRepository
-from app.schemas.pricing import DeliveryFeeBreakdown, PriceBreakdownResponse
+from app.schemas.pricing import DeliveryFeeBreakdown, PriceBreakdownResponse, PricingAnalyticsResponse
 
 
 class PricingService:
@@ -124,3 +124,43 @@ class PricingService:
             raise HTTPException(status_code=404, detail="Order not found")
 
         raise HTTPException(status_code=404, detail="Order not found")
+
+    def get_pricing_analytics(self, current_user) -> PricingAnalyticsResponse:
+        # Only admins can view pricing analytics
+        if current_user.role != "admin":
+            raise HTTPException(
+                status_code=403,
+                detail="Only admins can view pricing analytics",
+            )
+
+        # Load all system-created orders
+        orders = self.order_repo.get_all_orders()
+
+        # If no orders exist, return zero/None response
+        if not orders:
+            return PricingAnalyticsResponse(
+                total_orders=0,
+                total_revenue=0.0,
+                avg_order_value=None,
+                min_order_value=None,
+                max_order_value=None,
+            )
+
+        # Compute stats across all orders
+        order_values = [order.order_value for order in orders]
+        total_revenue = 0.0
+
+        for order in orders:
+            food_price = self._round_money(order.order_value)
+            delivery_fee = self._calculate_delivery_fee(order)
+            subtotal = self._round_money(food_price + delivery_fee.total_delivery_fee)
+            tax = self._round_money(subtotal * self.TAX_RATE)
+            total_revenue += self._round_money(subtotal + tax)
+
+        return PricingAnalyticsResponse(
+            total_orders=len(orders),
+            total_revenue=self._round_money(total_revenue),
+            avg_order_value=self._round_money(sum(order_values) / len(order_values)),
+            min_order_value=self._round_money(min(order_values)),
+            max_order_value=self._round_money(max(order_values)),
+        )

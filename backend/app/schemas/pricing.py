@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Optional
+
 from pydantic import BaseModel, Field
 
 
@@ -18,3 +20,11 @@ class PriceBreakdownResponse(BaseModel):
     subtotal: float = Field(..., ge=0)
     tax: float = Field(..., ge=0)
     total: float = Field(..., ge=0)
+
+
+class PricingAnalyticsResponse(BaseModel):
+    total_orders: int
+    total_revenue: float = Field(..., ge=0)
+    avg_order_value: Optional[float] = None   # None when there are no orders
+    min_order_value: Optional[float] = None   # As above
+    max_order_value: Optional[float] = None   # As above
