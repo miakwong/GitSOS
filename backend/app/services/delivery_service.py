@@ -1,7 +1,8 @@
 # Service layer for delivery info retrieval and outcome recording
 from app.repositories.order_repository import KaggleOrderRepository, OrderRepository
 from app.schemas.delivery import DeliveryAnalytics, DeliveryInfo, DeliveryOutcomeCreate
-from app.schemas.order import Order, OrderStatus
+from app.schemas.order import Order, OrderStatus, TrafficCondition, WeatherCondition
+from typing import Optional
 from app.schemas.user import UserInDB
 from fastapi import HTTPException, status
 
@@ -141,13 +142,27 @@ class DeliveryService:
     def get_delivery_analytics(
         self,
         user: UserInDB,
-        traffic_condition: str = None,
-        weather_condition: str = None,
+        traffic_condition: Optional[str] = None,
+        weather_condition: Optional[str] = None,
     ) -> DeliveryAnalytics:
         if user.role != "admin":
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Access denied: only admins can view delivery analytics",
+            )
+
+        valid_traffic = {t.value for t in TrafficCondition}
+        valid_weather = {w.value for w in WeatherCondition}
+
+        if traffic_condition and traffic_condition not in valid_traffic:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Invalid traffic_condition. Valid values: {', '.join(sorted(valid_traffic))}",
+            )
+        if weather_condition and weather_condition not in valid_weather:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Invalid weather_condition. Valid values: {', '.join(sorted(valid_weather))}",
             )
 
         orders = self.order_repo.get_orders_by_conditions(
