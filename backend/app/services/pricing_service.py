@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import List, Optional
+
 from fastapi import HTTPException
 
 from app.repositories.order_repository import OrderRepository, KaggleOrderRepository
@@ -124,3 +126,53 @@ class PricingService:
             raise HTTPException(status_code=404, detail="Order not found")
 
         raise HTTPException(status_code=404, detail="Order not found")
+
+    def inspect_pricing(
+        self, current_user, restaurant_id: Optional[int] = None
+    ) -> List[PriceBreakdownResponse]:
+        """
+        Return a list of price breakdowns for inspection.
+        - Admin can sees all orders, or filters by restaurant_id if provided
+        - Owner can only see orders for their own restaurant
+        - Customer will always bedenied with given 403
+        """
+        if current_user.role == "customer":
+            raise HTTPException(
+                status_code=403,
+                detail="Customers cannot inspect pricing",
+            )
+
+        if current_user.role == "owner":
+            owner_rest_id = current_user.restaurant_id
+            if owner_rest_id is None:
+                raise HTTPException(
+                    status_code=403,
+                    detail="Owner has no restaurant assigned",
+                )
+            orders = self.order_repo.get_orders_by_restaurant_id(owner_rest_id)
+        else:
+            if restaurant_id is not None:
+                orders = self.order_repo.get_orders_by_restaurant_id(restaurant_id)
+            else:
+                orders = self.order_repo.get_all_orders()
+
+        result = []
+        for order in orders:
+            food_price = self._round_money(order.order_value)
+            delivery_fee = self._calculate_delivery_fee(order)
+            subtotal = self._round_money(food_price + delivery_fee.total_delivery_fee)
+            tax = self._round_money(subtotal * self.TAX_RATE)
+            total = self._round_money(subtotal + tax)
+
+            result.append(
+                PriceBreakdownResponse(
+                    order_id=str(order.order_id),
+                    food_price=food_price,
+                    delivery_fee=delivery_fee,
+                    subtotal=subtotal,
+                    tax=tax,
+                    total=total,
+                )
+            )
+
+        return result

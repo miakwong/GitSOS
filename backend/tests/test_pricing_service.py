@@ -130,3 +130,144 @@ def test_get_price_breakdown_order_not_found(customer_user):
 
     assert exc_info.value.status_code == 404
     assert exc_info.value.detail == "Order not found"
+
+
+class FakeOrderRepoForInspect:
+    def __init__(self, orders):
+        self.orders = orders
+
+    def get_all_orders(self):
+        return self.orders
+
+    def get_orders_by_restaurant_id(self, rest_id: int):
+        return [o for o in self.orders if o.restaurant_id == rest_id]
+
+    def get_order_by_id(self, order_id: str):
+        for o in self.orders:
+            if str(o.order_id) == order_id:
+                return o
+        return None
+
+
+@pytest.fixture
+def order_at_restaurant_101():
+    return Order(
+        order_id=uuid4(),
+        customer_id="customer-1",
+        restaurant_id=101,
+        food_item="Sushi",
+        order_time="2026-03-16T12:00:00Z",
+        order_value=20.0,
+        delivery_distance=3.0,
+        delivery_method=DeliveryMethod.BIKE,
+        traffic_condition=TrafficCondition.LOW,
+        weather_condition=WeatherCondition.SUNNY,
+        order_status=OrderStatus.PLACED,
+    )
+
+
+@pytest.fixture
+def order_at_restaurant_202():
+    return Order(
+        order_id=uuid4(),
+        customer_id="customer-2",
+        restaurant_id=202,
+        food_item="Pizza",
+        order_time="2026-03-16T13:00:00Z",
+        order_value=30.0,
+        delivery_distance=5.0,
+        delivery_method=DeliveryMethod.CAR,
+        traffic_condition=TrafficCondition.HIGH,
+        weather_condition=WeatherCondition.RAINY,
+        order_status=OrderStatus.PAID,
+    )
+
+
+@pytest.fixture
+def inspect_admin_user():
+    return SimpleNamespace(id="admin-1", role="admin", restaurant_id=None)
+
+
+@pytest.fixture
+def inspect_owner_user():
+    return SimpleNamespace(id="owner-1", role="owner", restaurant_id=101)
+
+
+@pytest.fixture
+def inspect_customer_user():
+    return SimpleNamespace(id="cust-1", role="customer", restaurant_id=None)
+
+
+def test_inspect_admin_sees_all_orders(
+    inspect_admin_user, order_at_restaurant_101, order_at_restaurant_202
+):
+    service = PricingService(
+        order_repo=FakeOrderRepoForInspect(
+            orders=[order_at_restaurant_101, order_at_restaurant_202]
+        ),
+        kaggle_repo=FakeKaggleOrderRepository(order=None),
+    )
+
+    result = service.inspect_pricing(inspect_admin_user)
+
+    assert len(result) == 2
+
+
+def test_inspect_admin_filter_by_restaurant(
+    inspect_admin_user, order_at_restaurant_101, order_at_restaurant_202
+):
+    service = PricingService(
+        order_repo=FakeOrderRepoForInspect(
+            orders=[order_at_restaurant_101, order_at_restaurant_202]
+        ),
+        kaggle_repo=FakeKaggleOrderRepository(order=None),
+    )
+
+    result = service.inspect_pricing(inspect_admin_user, restaurant_id=101)
+
+    assert len(result) == 1
+    assert result[0].order_id == str(order_at_restaurant_101.order_id)
+
+
+def test_inspect_owner_sees_own_restaurant_orders(
+    inspect_owner_user, order_at_restaurant_101, order_at_restaurant_202
+):
+    service = PricingService(
+        order_repo=FakeOrderRepoForInspect(
+            orders=[order_at_restaurant_101, order_at_restaurant_202]
+        ),
+        kaggle_repo=FakeKaggleOrderRepository(order=None),
+    )
+
+    result = service.inspect_pricing(inspect_owner_user)
+
+    assert len(result) == 1
+    assert result[0].order_id == str(order_at_restaurant_101.order_id)
+
+
+def test_inspect_owner_cannot_see_other_restaurant_orders(
+    inspect_owner_user, order_at_restaurant_101, order_at_restaurant_202
+):
+    service = PricingService(
+        order_repo=FakeOrderRepoForInspect(
+            orders=[order_at_restaurant_101, order_at_restaurant_202]
+        ),
+        kaggle_repo=FakeKaggleOrderRepository(order=None),
+    )
+
+    result = service.inspect_pricing(inspect_owner_user)
+
+    order_ids = [r.order_id for r in result]
+    assert str(order_at_restaurant_202.order_id) not in order_ids
+
+
+def test_inspect_customer_is_denied(inspect_customer_user, order_at_restaurant_101):
+    service = PricingService(
+        order_repo=FakeOrderRepoForInspect(orders=[order_at_restaurant_101]),
+        kaggle_repo=FakeKaggleOrderRepository(order=None),
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        service.inspect_pricing(inspect_customer_user)
+
+    assert exc_info.value.status_code == 403
