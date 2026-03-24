@@ -15,9 +15,7 @@ def list_restaurants():
 
 
 @router.get("/menu/search", response_model=list[KaggleMenuItem])
-def search_menu(food_item: str = Query(...)):
-    if not food_item.strip():
-        raise HTTPException(status_code=400, detail="food_item keyword is required")
+def search_menu(food_item: str = Query(..., min_length=1)):
     return restaurant_service.search_menu(food_item)
 
 
