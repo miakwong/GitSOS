@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime, timezone
+from typing import Optional
 
 from app.repositories.order_repository import OrderRepository
 from app.schemas.order import (
@@ -15,8 +16,8 @@ def insert_analytics_order(
     order_repo: OrderRepository,
     traffic: TrafficCondition = TrafficCondition.LOW,
     weather: WeatherCondition = WeatherCondition.SUNNY,
-    actual_delivery_time: float = None,
-    delivery_delay: float = None,
+    actual_delivery_time: Optional[float] = None,
+    delivery_delay: Optional[float] = None,
 ) -> Order:
     order = Order(
         order_id=uuid.uuid4(),
