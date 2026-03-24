@@ -59,3 +59,13 @@ def test_search_menu_returns_kaggle_menu_item_instances():
 def test_search_menu_strips_whitespace():
     results = service.search_menu("  Burger  ")
     assert len(results) == 2
+
+
+def test_search_menu_skips_items_with_none_food_item(mock_menu_repo):
+    mock_menu_repo.list_all.return_value = [
+        KaggleMenuItem.model_construct(restaurant_id="10", food_item=None, median_price=5.0),
+        KaggleMenuItem(restaurant_id="10", food_item="Burger", median_price=12.0),
+    ]
+    results = service.search_menu("Burger")
+    assert len(results) == 1
+    assert results[0].food_item == "Burger"

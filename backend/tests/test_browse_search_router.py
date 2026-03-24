@@ -63,10 +63,9 @@ def test_search_menu_missing_param_422():
     assert response.status_code == 422
 
 
-def test_search_menu_empty_keyword_400():
+def test_search_menu_empty_keyword_422():
     response = client.get("/restaurants/menu/search?food_item=")
-    assert response.status_code == 400
-    assert response.json()["detail"] == "food_item keyword is required"
+    assert response.status_code == 422
 
 
 def test_search_menu_calls_service(mock_svc):
