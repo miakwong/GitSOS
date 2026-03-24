@@ -46,3 +46,8 @@ def update_profile(restaurant_id: str, data: RestaurantProfileUpdate) -> Optiona
     if base is None:
         return None
     return restaurant_profile_repository.upsert(restaurant_id, data, base.name)
+
+
+def search_menu(food_item: str) -> list[KaggleMenuItem]:
+    keyword = food_item.strip().lower()
+    return [item for item in kaggle_menu_repository.list_all() if keyword in item.food_item.lower()]
