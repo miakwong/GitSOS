@@ -16,6 +16,7 @@ from app.schemas.order import (
 )
 from app.schemas.user import UserInDB
 from app.services.delivery_service import DeliveryService
+from tests.helpers import insert_analytics_order
 
 
 def make_admin() -> UserInDB:
@@ -79,34 +80,6 @@ def delivery_service(order_repo, kaggle_repo):
     return DeliveryService(order_repo=order_repo, kaggle_repo=kaggle_repo)
 
 
-def insert_order(
-    order_repo: OrderRepository,
-    traffic: TrafficCondition = TrafficCondition.LOW,
-    weather: WeatherCondition = WeatherCondition.SUNNY,
-    actual_delivery_time: float = None,
-    delivery_delay: float = None,
-) -> Order:
-    order = Order(
-        order_id=uuid.uuid4(),
-        customer_id=str(uuid.uuid4()),
-        restaurant_id=16,
-        food_item="Tacos",
-        order_time=datetime.now(timezone.utc),
-        order_value=20.0,
-        delivery_distance=5.0,
-        delivery_method=DeliveryMethod.BIKE,
-        traffic_condition=traffic,
-        weather_condition=weather,
-        order_status=OrderStatus.PLACED,
-        actual_delivery_time=actual_delivery_time,
-        delivery_delay=delivery_delay,
-    )
-    raw = order_repo._load_orders()
-    raw.append(order.model_dump(mode="json"))
-    order_repo._save_orders(raw)
-    return order
-
-
 class TestAnalyticsAccessControl:
 
     def test_customer_gets_403(self, delivery_service):
@@ -131,8 +104,8 @@ class TestAnalyticsFiltering:
 
     def test_no_filter_returns_all_orders(self, delivery_service, order_repo):
         admin = make_admin()
-        insert_order(order_repo, traffic=TrafficCondition.LOW)
-        insert_order(order_repo, traffic=TrafficCondition.HIGH)
+        insert_analytics_order(order_repo, traffic=TrafficCondition.LOW)
+        insert_analytics_order(order_repo, traffic=TrafficCondition.HIGH)
 
         result = delivery_service.get_delivery_analytics(admin)
 
@@ -140,8 +113,8 @@ class TestAnalyticsFiltering:
 
     def test_filter_by_traffic_condition(self, delivery_service, order_repo):
         admin = make_admin()
-        insert_order(order_repo, traffic=TrafficCondition.LOW)
-        insert_order(order_repo, traffic=TrafficCondition.HIGH)
+        insert_analytics_order(order_repo, traffic=TrafficCondition.LOW)
+        insert_analytics_order(order_repo, traffic=TrafficCondition.HIGH)
 
         result = delivery_service.get_delivery_analytics(admin, traffic_condition="Low")
 
@@ -150,8 +123,8 @@ class TestAnalyticsFiltering:
 
     def test_filter_by_weather_condition(self, delivery_service, order_repo):
         admin = make_admin()
-        insert_order(order_repo, weather=WeatherCondition.SUNNY)
-        insert_order(order_repo, weather=WeatherCondition.RAINY)
+        insert_analytics_order(order_repo, weather=WeatherCondition.SUNNY)
+        insert_analytics_order(order_repo, weather=WeatherCondition.RAINY)
 
         result = delivery_service.get_delivery_analytics(admin, weather_condition="Sunny")
 
@@ -160,9 +133,9 @@ class TestAnalyticsFiltering:
 
     def test_filter_by_both_conditions(self, delivery_service, order_repo):
         admin = make_admin()
-        insert_order(order_repo, traffic=TrafficCondition.LOW, weather=WeatherCondition.SUNNY)
-        insert_order(order_repo, traffic=TrafficCondition.LOW, weather=WeatherCondition.RAINY)
-        insert_order(order_repo, traffic=TrafficCondition.HIGH, weather=WeatherCondition.SUNNY)
+        insert_analytics_order(order_repo, traffic=TrafficCondition.LOW, weather=WeatherCondition.SUNNY)
+        insert_analytics_order(order_repo, traffic=TrafficCondition.LOW, weather=WeatherCondition.RAINY)
+        insert_analytics_order(order_repo, traffic=TrafficCondition.HIGH, weather=WeatherCondition.SUNNY)
 
         result = delivery_service.get_delivery_analytics(
             admin, traffic_condition="Low", weather_condition="Sunny"
@@ -172,7 +145,7 @@ class TestAnalyticsFiltering:
 
     def test_no_match_returns_empty(self, delivery_service, order_repo):
         admin = make_admin()
-        insert_order(order_repo, traffic=TrafficCondition.LOW)
+        insert_analytics_order(order_repo, traffic=TrafficCondition.LOW)
 
         result = delivery_service.get_delivery_analytics(admin, traffic_condition="High")
 
@@ -187,13 +160,25 @@ class TestAnalyticsFiltering:
         assert result.total_orders == 0
         assert result.records == []
 
+    def test_invalid_traffic_condition_raises_422(self, delivery_service):
+        admin = make_admin()
+        with pytest.raises(Exception) as exc_info:
+            delivery_service.get_delivery_analytics(admin, traffic_condition="blah")
+        assert exc_info.value.status_code == 422
+
+    def test_invalid_weather_condition_raises_422(self, delivery_service):
+        admin = make_admin()
+        with pytest.raises(Exception) as exc_info:
+            delivery_service.get_delivery_analytics(admin, weather_condition="blah")
+        assert exc_info.value.status_code == 422
+
 
 class TestAnalyticsAggregates:
 
     def test_avg_delivery_time_computed_correctly(self, delivery_service, order_repo):
         admin = make_admin()
-        insert_order(order_repo, actual_delivery_time=30.0, delivery_delay=5.0)
-        insert_order(order_repo, actual_delivery_time=50.0, delivery_delay=10.0)
+        insert_analytics_order(order_repo, actual_delivery_time=30.0, delivery_delay=5.0)
+        insert_analytics_order(order_repo, actual_delivery_time=50.0, delivery_delay=10.0)
 
         result = delivery_service.get_delivery_analytics(admin)
 
@@ -202,7 +187,7 @@ class TestAnalyticsAggregates:
 
     def test_avg_is_none_when_no_outcomes_recorded(self, delivery_service, order_repo):
         admin = make_admin()
-        insert_order(order_repo)
+        insert_analytics_order(order_repo)
 
         result = delivery_service.get_delivery_analytics(admin)
 
@@ -211,8 +196,8 @@ class TestAnalyticsAggregates:
 
     def test_avg_only_uses_orders_with_outcomes(self, delivery_service, order_repo):
         admin = make_admin()
-        insert_order(order_repo, actual_delivery_time=40.0, delivery_delay=0.0)
-        insert_order(order_repo)
+        insert_analytics_order(order_repo, actual_delivery_time=40.0, delivery_delay=0.0)
+        insert_analytics_order(order_repo)
 
         result = delivery_service.get_delivery_analytics(admin)
 
@@ -221,7 +206,7 @@ class TestAnalyticsAggregates:
 
     def test_response_contains_filter_params(self, delivery_service, order_repo):
         admin = make_admin()
-        insert_order(order_repo, traffic=TrafficCondition.HIGH)
+        insert_analytics_order(order_repo, traffic=TrafficCondition.HIGH)
 
         result = delivery_service.get_delivery_analytics(
             admin, traffic_condition="High", weather_condition="Sunny"
