@@ -1,25 +1,21 @@
 # Tests for order creation functionality
+import pytest
 import json
 import tempfile
 from pathlib import Path
-
-import pytest
-from app.main import app
-from app.repositories.order_repository import KaggleOrderRepository, OrderRepository
-from app.schemas.order import (
-    DeliveryMethod,
-    OrderCreate,
-    OrderStatus,
-    TrafficCondition,
-    WeatherCondition,
-)
-from app.services.order_service import OrderService
 from fastapi.testclient import TestClient
+
+from app.main import app
+from app.schemas.order import (
+    OrderCreate, Order, OrderStatus,
+    DeliveryMethod, TrafficCondition, WeatherCondition
+)
+from app.repositories.order_repository import OrderRepository, KaggleOrderRepository
+from app.services.order_service import OrderService
 
 client = TestClient(app)
 
 
-# --- Fixtures ---
 
 
 # Create a temporary JSON file for system orders
@@ -47,7 +43,7 @@ def order_repo(temp_orders_file):
     return OrderRepository(orders_path=temp_orders_file)
 
 
-# Kaggle repository with temp CSV
+
 @pytest.fixture
 def kaggle_repo(temp_kaggle_csv):
     return KaggleOrderRepository(csv_path=temp_kaggle_csv)
@@ -59,7 +55,6 @@ def order_service(order_repo, kaggle_repo):
     return OrderService(order_repo=order_repo, kaggle_repo=kaggle_repo)
 
 
-# --- Schema Validation Tests ---
 
 
 # Tests for OrderCreate schema validation
@@ -139,7 +134,7 @@ class TestOrderSchemaValidation:
                 delivery_method=DeliveryMethod.BIKE,
             )
 
-    # Test whitespace-only food_item is rejected
+  
     def test_whitespace_food_item_rejected(self):
         with pytest.raises(ValueError):
             OrderCreate(
@@ -190,7 +185,6 @@ class TestOrderSchemaValidation:
             )
 
 
-# --- Repository Tests ---
 
 
 # Tests for Kaggle repository (read-only)
@@ -237,7 +231,7 @@ class TestOrderRepository:
         assert order.order_status == OrderStatus.PLACED
         assert order.customer_id == "cust-123"
 
-    # Test retrieving all orders
+    # test retrieving an order by ID
     def test_get_all_orders(self, order_repo):
         # Create two orders
         for _ in range(2):
@@ -254,8 +248,6 @@ class TestOrderRepository:
         orders = order_repo.get_all_orders()
         assert len(orders) == 2
 
-
-# --- Service Tests ---
 
 
 # Tests for order service business logic
@@ -289,7 +281,6 @@ class TestOrderService:
             delivery_method=DeliveryMethod.BIKE,
         )
         from fastapi import HTTPException
-
         with pytest.raises(HTTPException) as exc_info:
             order_service.create_order(order_data)
         assert exc_info.value.status_code == 400
@@ -306,7 +297,6 @@ class TestOrderService:
             delivery_method=DeliveryMethod.BIKE,
         )
         from fastapi import HTTPException
-
         with pytest.raises(HTTPException) as exc_info:
             order_service.create_order(order_data)
         assert exc_info.value.status_code == 400
@@ -323,7 +313,6 @@ class TestOrderService:
             delivery_method=DeliveryMethod.BIKE,
         )
         from fastapi import HTTPException
-
         with pytest.raises(HTTPException) as exc_info:
             order_service.create_order(order_data)
         assert exc_info.value.status_code == 400
@@ -358,10 +347,8 @@ class TestOrderService:
         assert order.weather_condition == WeatherCondition.RAINY
 
 
-# --- Enum Tests ---
 
-
-# Tests for enum value constraints
+# tests for enum values
 class TestEnumValues:
 
     # Test all valid OrderStatus values
@@ -392,7 +379,6 @@ class TestEnumValues:
 
 
 # --- Integration Tests ---
-
 
 # Integration tests for order API endpoints
 class TestOrderAPIIntegration:
