@@ -14,6 +14,7 @@ from app.schemas.user import TokenResponse, UserCreate, UserLogin, UserProfile, 
 from app.services.auth_service import AuthService
 from app.services.order_service import OrderService
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordRequestForm
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -30,8 +31,9 @@ def register(payload: UserCreate, auth: AuthService = Depends(get_auth_service))
 
 
 @router.post("/login", response_model=TokenResponse)
-def login(payload: UserLogin, auth: AuthService = Depends(get_auth_service)):
+def login(form: OAuth2PasswordRequestForm = Depends(), auth: AuthService = Depends(get_auth_service)):
     try:
+        payload = UserLogin(email=form.username, password=form.password)
         token = auth.login_user(payload)
         return TokenResponse(access_token=token, token_type="bearer")
     except PermissionError:

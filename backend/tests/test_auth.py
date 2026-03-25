@@ -61,7 +61,7 @@ def test_login_success_returns_token(client):
         json={"email": "login@test.com", "password": "secret12", "role": "customer"},
     )
     r = client.post(
-        "/auth/login", json={"email": "login@test.com", "password": "secret12"}
+        "/auth/login", data={"username": "login@test.com", "password": "secret12"}
     )
     assert r.status_code == 200
     body = r.json()
@@ -75,6 +75,6 @@ def test_login_invalid_credentials(client):
         json={"email": "bad@test.com", "password": "secret12", "role": "customer"},
     )
     r = client.post(
-        "/auth/login", json={"email": "bad@test.com", "password": "wrongpass"}
+        "/auth/login", data={"username": "bad@test.com", "password": "wrongpass"}
     )
     assert r.status_code == 401

@@ -65,37 +65,33 @@ class SearchService:
     def __init__(self, repo: Optional[SearchRepository] = None) -> None:
         self.repo = repo or SearchRepository()
 
-    # ---------------------------------------------------
-    # IMPORTANT: scope hook (This should be customize to our real auth model)
-    # ---------------------------------------------------
     def _enforce_scope(
         self, user: CurrentUser, row: Dict[str, Any], resource: str
     ) -> bool:
-        """
-        Returns True if user is allowed to see this row.
-        For the below, it's conservative but simple for now:
-        - Admin: sees all
-        - Owner: can be restricted by restaurant_id if available + owner_restaurant_ids
-        - Customer: can be restricted by customer_id for orders
-        """
+        # Admin sees everything with no restrictions
         if user.role.value == "admin":
             return True
 
+        # Restaurants and menu items are public so all roles can browse them
+        if resource in ("restaurants", "menu_items"):
+            return True
+
+        # Orders are private so it needs to be restricted based on the user's role
         if resource == "orders":
-            # If dataset row has customer_id, restrict for customers
             if user.role.value == "customer":
-                row_customer = str(row.get("customer_id") or row.get("customer") or "")
+                # Customer can only see their own orders
+                row_customer = str(row.get("customer_id") or "")
                 return row_customer == user.user_id
 
             if user.role.value == "owner":
-                # If dataset store restaurant_id in row + owner_restaurant_ids in user
-                row_rest = str(row.get("restaurant_id") or row.get("restaurant") or "")
-                return (not user.owner_restaurant_ids) or (
-                    row_rest in user.owner_restaurant_ids
-                )
+                # Owner can only see orders placed at their own restaurants.
+                # If owner_restaurant_ids is empty, no orders will match — this is intentional.
+                # An owner with no assigned restaurants should see nothing, not everything.
+                row_restaurant = str(row.get("restaurant_id") or "")
+                return row_restaurant in user.owner_restaurant_ids
 
-        # restaurants/menu-items: typically public which anyone can see.
-        return True
+        # Deny by default which is unknown resource or role
+        return False
 
     def _reject_unsupported_filters(
         self, provided: Dict[str, Any], allowed: set[str]
