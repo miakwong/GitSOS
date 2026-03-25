@@ -39,6 +39,14 @@ class PricingService:
                 detail="You do not have permission to view this order breakdown",
             )
 
+    def _get_food_price(self, order) -> float:
+        """
+        Returns the food price for an order.
+        Both get_price_breakdown and get_pricing_analytics call this helper
+        so they always use the same food price logic.
+        """
+        return order.order_value
+
     def _calculate_method_fee(self, delivery_method) -> float:
         method = delivery_method.value
 
@@ -99,8 +107,7 @@ class PricingService:
         if order:
             self._check_access(order, current_user)
 
-            # Order_value is treated as the food subtotal
-            food_price = self._round_money(order.order_value)
+            food_price = self._round_money(self._get_food_price(order))
 
             delivery_fee = self._calculate_delivery_fee(order)
             subtotal = self._round_money(food_price + delivery_fee.total_delivery_fee)
@@ -151,7 +158,7 @@ class PricingService:
         total_revenue = 0.0
 
         for order in orders:
-            food_price = self._round_money(order.order_value)
+            food_price = self._round_money(self._get_food_price(order))
             delivery_fee = self._calculate_delivery_fee(order)
             subtotal = self._round_money(food_price + delivery_fee.total_delivery_fee)
             tax = self._round_money(subtotal * self.TAX_RATE)
