@@ -74,8 +74,10 @@ def test_get_price_breakdown_success(sample_order, customer_user):
     assert result.food_price == 20.0
     assert result.delivery_fee.base_fee == 2.5
     assert result.delivery_fee.distance_fee == 3.0
-    assert result.delivery_fee.method_fee == 0.5
-    assert result.delivery_fee.condition_fee == 1.25
+    assert result.delivery_fee.method_surcharge == 0.5
+    assert result.delivery_fee.traffic_surcharge == 0.5
+    assert result.delivery_fee.weather_surcharge == 0.75
+    assert result.delivery_fee.condition_surcharge == 1.25
     assert result.delivery_fee.total_delivery_fee == 7.25
     assert result.subtotal == 27.25
     assert result.tax == 1.36
@@ -271,3 +273,17 @@ def test_inspect_customer_is_denied(inspect_customer_user, order_at_restaurant_1
         service.inspect_pricing(inspect_customer_user)
 
     assert exc_info.value.status_code == 403
+
+
+def test_inspect_owner_cannot_pass_restaurant_id(inspect_owner_user, order_at_restaurant_101):
+    # restaurant_id is admin-only and owner passing it should get 403
+    service = PricingService(
+        order_repo=FakeOrderRepoForInspect(orders=[order_at_restaurant_101]),
+        kaggle_repo=FakeKaggleOrderRepository(order=None),
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        service.inspect_pricing(inspect_owner_user, restaurant_id=999)
+
+    assert exc_info.value.status_code == 403
+    assert "restaurant_id" in exc_info.value.detail.lower()

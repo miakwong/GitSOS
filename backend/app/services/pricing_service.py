@@ -41,7 +41,15 @@ class PricingService:
                 detail="You do not have permission to view this order breakdown",
             )
 
-    def _calculate_method_fee(self, delivery_method) -> float:
+    def _get_food_price(self, order) -> float:
+        """
+        Returns the food price for an order.
+        Both get_price_breakdown and inspect_pricing call this helper
+        so they always use the same food price logic.
+        """
+        return order.order_value
+
+    def _calculate_method_surcharge(self, delivery_method) -> float:
         method = delivery_method.value
 
         if method == "Walk":
@@ -53,40 +61,43 @@ class PricingService:
 
         return 0.00
 
-    def _calculate_condition_fee(self, traffic_condition, weather_condition) -> float:
-        fee = 0.0
-
+    def _calculate_traffic_surcharge(self, traffic_condition) -> float:
         traffic = traffic_condition.value
-        weather = weather_condition.value
 
         if traffic == "Medium":
-            fee += 0.50
+            return 0.50
         elif traffic == "High":
-            fee += 1.00
+            return 1.00
+
+        return 0.00
+
+    def _calculate_weather_surcharge(self, weather_condition) -> float:
+        weather = weather_condition.value
 
         if weather == "Rainy":
-            fee += 0.75
+            return 0.75
         elif weather == "Snowy":
-            fee += 1.25
+            return 1.25
 
-        return fee
+        return 0.00
 
     def _calculate_delivery_fee(self, order) -> DeliveryFeeBreakdown:
         base_fee = self.BASE_DELIVERY_FEE
         distance_fee = order.delivery_distance * self.DISTANCE_RATE_PER_KM
-        method_fee = self._calculate_method_fee(order.delivery_method)
-        condition_fee = self._calculate_condition_fee(
-            order.traffic_condition,
-            order.weather_condition,
-        )
+        method_surcharge = self._calculate_method_surcharge(order.delivery_method)
+        traffic_surcharge = self._calculate_traffic_surcharge(order.traffic_condition)
+        weather_surcharge = self._calculate_weather_surcharge(order.weather_condition)
 
-        total_delivery_fee = base_fee + distance_fee + method_fee + condition_fee
+        condition_surcharge = traffic_surcharge + weather_surcharge
+        total_delivery_fee = base_fee + distance_fee + method_surcharge + condition_surcharge
 
         return DeliveryFeeBreakdown(
             base_fee=self._round_money(base_fee),
             distance_fee=self._round_money(distance_fee),
-            method_fee=self._round_money(method_fee),
-            condition_fee=self._round_money(condition_fee),
+            method_surcharge=self._round_money(method_surcharge),
+            traffic_surcharge=self._round_money(traffic_surcharge),
+            weather_surcharge=self._round_money(weather_surcharge),
+            condition_surcharge=self._round_money(condition_surcharge),
             total_delivery_fee=self._round_money(total_delivery_fee),
         )
 
@@ -101,15 +112,14 @@ class PricingService:
         if order:
             self._check_access(order, current_user)
 
-            # Order_value is treated as the food subtotal
-            food_price = self._round_money(order.order_value)
+            food_price = self._round_money(self._get_food_price(order))
 
             delivery_fee = self._calculate_delivery_fee(order)
             subtotal = self._round_money(food_price + delivery_fee.total_delivery_fee)
             tax = self._round_money(subtotal * self.TAX_RATE)
             total = self._round_money(subtotal + tax)
 
-            response = PriceBreakdownResponse(
+            return PriceBreakdownResponse(
                 order_id=str(order.order_id),
                 food_price=food_price,
                 delivery_fee=delivery_fee,
@@ -117,8 +127,6 @@ class PricingService:
                 tax=tax,
                 total=total,
             )
-
-            return response
 
         # Then check Kaggle historical orders — treat as not found to avoid leaking data
         historical_order = self.kaggle_repo.get_order_by_id(order_id)
@@ -132,9 +140,9 @@ class PricingService:
     ) -> List[PriceBreakdownResponse]:
         """
         Return a list of price breakdowns for inspection.
-        - Admin can sees all orders, or filters by restaurant_id if provided
-        - Owner can only see orders for their own restaurant
-        - Customer will always bedenied with given 403
+        - Admin can see all orders, or filter by restaurant_id if provided
+        - Owner can only see orders for their own restaurant (restaurant_id param not allowed)
+        - Customer is always denied with 403
         """
         if current_user.role == "customer":
             raise HTTPException(
@@ -143,6 +151,13 @@ class PricingService:
             )
 
         if current_user.role == "owner":
+            # Owners cannot use restaurant_id filter so they always see their own restaurant only.
+            # If they pass restaurant_id we return 403 so they know the param isn't available to them.
+            if restaurant_id is not None:
+                raise HTTPException(
+                    status_code=403,
+                    detail="Owners cannot filter by restaurant_id",
+                )
             owner_rest_id = current_user.restaurant_id
             if owner_rest_id is None:
                 raise HTTPException(
@@ -158,7 +173,7 @@ class PricingService:
 
         result = []
         for order in orders:
-            food_price = self._round_money(order.order_value)
+            food_price = self._round_money(self._get_food_price(order))
             delivery_fee = self._calculate_delivery_fee(order)
             subtotal = self._round_money(food_price + delivery_fee.total_delivery_fee)
             tax = self._round_money(subtotal * self.TAX_RATE)

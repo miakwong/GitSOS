@@ -6,8 +6,10 @@ from pydantic import BaseModel, Field
 class DeliveryFeeBreakdown(BaseModel):
     base_fee: float = Field(..., ge=0)
     distance_fee: float = Field(..., ge=0)
-    method_fee: float = Field(..., ge=0)
-    condition_fee: float = Field(..., ge=0)
+    method_surcharge: float = Field(..., ge=0)
+    traffic_surcharge: float = Field(..., ge=0)
+    weather_surcharge: float = Field(..., ge=0)
+    condition_surcharge: float = Field(..., ge=0)
     total_delivery_fee: float = Field(..., ge=0)
 
 

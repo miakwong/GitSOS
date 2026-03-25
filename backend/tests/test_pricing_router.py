@@ -17,8 +17,10 @@ def fake_get_price_breakdown(order_id: str, current_user):
         "delivery_fee": {
             "base_fee": 2.5,
             "distance_fee": 3.0,
-            "method_fee": 0.5,
-            "condition_fee": 1.25,
+            "method_surcharge": 0.5,
+            "traffic_surcharge": 0.5,
+            "weather_surcharge": 0.75,
+            "condition_surcharge": 1.25,
             "total_delivery_fee": 7.25,
         },
         "subtotal": 27.25,
@@ -57,8 +59,10 @@ FAKE_BREAKDOWN = {
     "delivery_fee": {
         "base_fee": 2.5,
         "distance_fee": 3.0,
-        "method_fee": 0.5,
-        "condition_fee": 0.0,
+        "method_surcharge": 0.5,
+        "traffic_surcharge": 0.0,
+        "weather_surcharge": 0.0,
+        "condition_surcharge": 0.0,
         "total_delivery_fee": 6.0,
     },
     "subtotal": 26.0,
@@ -161,3 +165,17 @@ def test_inspect_no_orders_returns_empty_list():
     body = client.get("/pricing/inspect").json()
 
     assert body == []
+
+
+def fake_inspect_owner_restaurant_id_forbidden(current_user, restaurant_id=None):
+    raise HTTPException(status_code=403, detail="Owners cannot filter by restaurant_id")
+
+
+def test_inspect_owner_with_restaurant_id_returns_403():
+    app.dependency_overrides[pricing_router.get_current_user] = fake_owner_user
+    pricing_router.pricing_service.inspect_pricing = fake_inspect_owner_restaurant_id_forbidden
+
+    response = client.get("/pricing/inspect?restaurant_id=999")
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == "Owners cannot filter by restaurant_id"
