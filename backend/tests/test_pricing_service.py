@@ -191,6 +191,7 @@ def test_get_price_breakdown_order_not_found(customer_user):
         service.get_price_breakdown("missing-order", customer_user)
 
     assert exc_info.value.status_code == 404
+    assert exc_info.value.detail == "Order not found"
 
 
 # ------------------------------------------------------------------ #
