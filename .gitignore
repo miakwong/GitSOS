@@ -18,3 +18,4 @@ backend/.coverage
 
 # Database files
 backend/app/data/*.csv
+backend/app/data/*.json
