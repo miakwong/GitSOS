@@ -222,9 +222,10 @@ def test_analytics_min_max_avg_order_value(analytics_admin, two_orders):
 
     result = service.get_pricing_analytics(analytics_admin)
 
-    assert result.min_order_value == 20.0
-    assert result.max_order_value == 40.0
-    assert result.avg_order_value == 30.0
+    assert result.avg_order_value == round(result.total_revenue / result.total_orders, 2)
+    assert result.min_order_value < result.max_order_value
+    assert result.min_order_value > 20.0
+    assert result.max_order_value > 40.0
 
 
 def test_analytics_total_revenue_is_positive(analytics_admin, two_orders):

@@ -146,8 +146,8 @@ class PricingService:
                 max_order_value=None,
             )
 
-        # Compute stats across all orders
-        order_values = [order.order_value for order in orders]
+        # Compute the full total which is food + delivery + tax for each order
+        order_totals = []
         total_revenue = 0.0
 
         for order in orders:
@@ -155,12 +155,14 @@ class PricingService:
             delivery_fee = self._calculate_delivery_fee(order)
             subtotal = self._round_money(food_price + delivery_fee.total_delivery_fee)
             tax = self._round_money(subtotal * self.TAX_RATE)
-            total_revenue += self._round_money(subtotal + tax)
+            order_total = self._round_money(subtotal + tax)
+            order_totals.append(order_total)
+            total_revenue += order_total
 
         return PricingAnalyticsResponse(
             total_orders=len(orders),
             total_revenue=self._round_money(total_revenue),
-            avg_order_value=self._round_money(sum(order_values) / len(order_values)),
-            min_order_value=self._round_money(min(order_values)),
-            max_order_value=self._round_money(max(order_values)),
+            avg_order_value=self._round_money(total_revenue / len(orders)),
+            min_order_value=self._round_money(min(order_totals)),
+            max_order_value=self._round_money(max(order_totals)),
         )

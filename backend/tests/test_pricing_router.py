@@ -56,3 +56,70 @@ def test_get_price_breakdown_route_success():
     assert body["subtotal"] == 27.25
     assert body["tax"] == 1.36
     assert body["total"] == 28.61
+
+
+def fake_analytics_admin():
+    return SimpleNamespace(id="admin-1", role="admin")
+
+
+def fake_analytics_customer():
+    return SimpleNamespace(id="cust-1", role="customer")
+
+
+def fake_get_pricing_analytics_success(current_user):
+    from app.schemas.pricing import PricingAnalyticsResponse
+    return PricingAnalyticsResponse(
+        total_orders=3,
+        total_revenue=90.0,
+        avg_order_value=30.0,
+        min_order_value=20.0,
+        max_order_value=40.0,
+    )
+
+
+def fake_get_pricing_analytics_forbidden(current_user):
+    from fastapi import HTTPException
+    raise HTTPException(status_code=403, detail="Only admins can view pricing analytics")
+
+
+def test_analytics_route_admin_returns_200():
+    app.dependency_overrides[pricing_router.get_current_user] = fake_analytics_admin
+    pricing_router.pricing_service.get_pricing_analytics = fake_get_pricing_analytics_success
+
+    response = client.get("/pricing/analytics")
+
+    assert response.status_code == 200
+
+
+def test_analytics_route_returns_correct_fields():
+    app.dependency_overrides[pricing_router.get_current_user] = fake_analytics_admin
+    pricing_router.pricing_service.get_pricing_analytics = fake_get_pricing_analytics_success
+
+    body = client.get("/pricing/analytics").json()
+
+    assert "total_orders" in body
+    assert "total_revenue" in body
+    assert "avg_order_value" in body
+    assert "min_order_value" in body
+    assert "max_order_value" in body
+
+
+def test_analytics_route_returns_correct_values():
+    app.dependency_overrides[pricing_router.get_current_user] = fake_analytics_admin
+    pricing_router.pricing_service.get_pricing_analytics = fake_get_pricing_analytics_success
+
+    body = client.get("/pricing/analytics").json()
+
+    assert body["total_orders"] == 3
+    assert body["total_revenue"] == 90.0
+    assert body["avg_order_value"] == 30.0
+
+
+def test_analytics_route_customer_returns_403():
+    app.dependency_overrides[pricing_router.get_current_user] = fake_analytics_customer
+    pricing_router.pricing_service.get_pricing_analytics = fake_get_pricing_analytics_forbidden
+
+    response = client.get("/pricing/analytics")
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == "Only admins can view pricing analytics"
