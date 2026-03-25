@@ -130,6 +130,19 @@ def test_missing_field_goes_to_end():
     assert names == ["Burger Town", "Sushi House", None]
 
 
+def test_missing_field_goes_to_end_desc():
+    # Even with descending sort, None values should still go to the end
+    rows = [
+        {"restaurant_name": "Sushi House"},
+        {"restaurant_name": None},
+        {"restaurant_name": "Burger Town"},
+    ]
+    result = sort_results(rows, sort_by="restaurant_name", sort_order="desc", valid_sort_keys=VALID_RESTAURANT_SORT_KEYS)
+    names = [r["restaurant_name"] for r in result]
+    # Descending: Sushi House, Burger Town — None still last
+    assert names == ["Sushi House", "Burger Town", None]
+
+
 # ------------------------------------------------------------------
 # Empty list returns empty list
 # ------------------------------------------------------------------

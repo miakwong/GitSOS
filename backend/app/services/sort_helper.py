@@ -30,15 +30,16 @@ def sort_results(
 
     reverse = sort_order == "desc"
 
-    # Sort the rows — rows missing the field go to the end
+    # Separate rows that have a value for the sort field from those that don't.
+    # This ensures None rows always go to the end, regardless of sort direction.
+    has_value = [row for row in rows if row.get(sort_by) is not None]
+    missing_value = [row for row in rows if row.get(sort_by) is None]
+
     def sort_key(row: Dict[str, Any]) -> Any:
         val = row.get(sort_by)
-        if val is None:
-            # Put rows with missing field at the end
-            return (1, "")
         # Strings are sorted case-insensitively
         if isinstance(val, str):
-            return (0, val.lower())
-        return (0, val)
+            return val.lower()
+        return val
 
-    return sorted(rows, key=sort_key, reverse=reverse)
+    return sorted(has_value, key=sort_key, reverse=reverse) + missing_value
