@@ -57,7 +57,7 @@ def _register(c, email, password="pass1234", role="customer", restaurant_id=None
 
 
 def _login(c, email, password="pass1234"):
-    r = c.post("/auth/login", json={"email": email, "password": password})
+    r = c.post("/auth/login", data={"username": email, "password": password})
     return r.json()["access_token"]
 
 

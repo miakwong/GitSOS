@@ -69,3 +69,34 @@ def test_search_restaurants_unsupported_filter():
 
     assert "detail" in body
     assert "Unsupported query parameter" in body["detail"]["message"]
+
+
+def test_sort_restaurants_asc_returns_200():
+    # Router should accept sort_by and sort_order as valid query params
+    response = client.get("/search/restaurants?sort_by=restaurant_name&sort_order=asc")
+    assert response.status_code == 200
+    body = response.json()
+    names = [r["restaurant_name"] for r in body["data"]]
+    # Burger Town comes before Sushi House since it's ascending and B comes before S
+    assert names.index("Burger Town") < names.index("Sushi House")
+
+
+def test_sort_restaurants_desc_returns_200():
+    response = client.get("/search/restaurants?sort_by=restaurant_name&sort_order=desc")
+    assert response.status_code == 200
+    body = response.json()
+    names = [r["restaurant_name"] for r in body["data"]]
+    # Sushi House comes before Burger Town when descending since S comes after B
+    assert names.index("Sushi House") < names.index("Burger Town")
+
+
+def test_invalid_sort_by_returns_400():
+    # "city" is not a valid sort key for restaurants
+    response = client.get("/search/restaurants?sort_by=city")
+    assert response.status_code == 400
+
+
+def test_invalid_sort_order_returns_422():
+    # sort_order must be "asc" or "desc"
+    response = client.get("/search/restaurants?sort_order=random")
+    assert response.status_code == 422

@@ -41,7 +41,7 @@ def _register(client, email, password="secret12", role="customer"):
 
 
 def _login(client, email, password="secret12"):
-    r = client.post("/auth/login", json={"email": email, "password": password})
+    r = client.post("/auth/login", data={"username": email, "password": password})
     return r.json()["access_token"]
 
 
