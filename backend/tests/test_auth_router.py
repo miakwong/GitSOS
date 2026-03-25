@@ -43,7 +43,7 @@ def register_user(client, email="user@test.com", password="secret12"):
 
 
 def login_user(client, email="user@test.com", password="secret12"):
-    return client.post("/auth/login", json={"email": email, "password": password})
+    return client.post("/auth/login", data={"username": email, "password": password})
 
 
 def test_register_success(client):

@@ -31,6 +31,13 @@ router = APIRouter(prefix="/search", tags=["Search & Filters"])
 service = SearchService()
 
 
+PAGINATION_AND_SORT_PARAMS = {"page", "page_size", "sort_by", "sort_order"}
+
+
+def _filter_only_params(raw: Dict[str, Any]) -> Dict[str, Any]:
+    return {k: v for k, v in raw.items() if k not in PAGINATION_AND_SORT_PARAMS}
+
+
 @router.get("/restaurants", response_model=PaginatedResponse)
 def search_restaurants(
     request: Request,
@@ -40,6 +47,8 @@ def search_restaurants(
     cuisine: Optional[str] = None,
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
+    sort_by: Optional[str] = Query(None, description="Sort by: restaurant_id, restaurant_name"),
+    sort_order: str = Query("asc", pattern="^(asc|desc)$", description="asc or desc"),
     user: CurrentUser = Depends(get_search_user),
 ):
     filters = RestaurantFilterParams(
@@ -48,9 +57,9 @@ def search_restaurants(
         city=city,
         cuisine=cuisine,
     )
-    pagination = PaginationParams(page=page, page_size=page_size)
+    pagination = PaginationParams(page=page, page_size=page_size, sort_by=sort_by, sort_order=sort_order)
 
-    raw_query_params: Dict[str, Any] = dict(request.query_params)
+    raw_query_params = _filter_only_params(dict(request.query_params))
     return service.filter_restaurants(user, filters, pagination, raw_query_params)
 
 
@@ -64,6 +73,8 @@ def search_menu_items(
     max_price: Optional[float] = Query(None, ge=0),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
+    sort_by: Optional[str] = Query(None, description="Sort by: item_name, price"),
+    sort_order: str = Query("asc", pattern="^(asc|desc)$", description="asc or desc"),
     user: CurrentUser = Depends(get_search_user),
 ):
     filters = MenuItemFilterParams(
@@ -73,9 +84,9 @@ def search_menu_items(
         min_price=min_price,
         max_price=max_price,
     )
-    pagination = PaginationParams(page=page, page_size=page_size)
+    pagination = PaginationParams(page=page, page_size=page_size, sort_by=sort_by, sort_order=sort_order)
 
-    raw_query_params: Dict[str, Any] = dict(request.query_params)
+    raw_query_params = _filter_only_params(dict(request.query_params))
     return service.filter_menu_items(user, filters, pagination, raw_query_params)
 
 
@@ -90,6 +101,8 @@ def search_orders(
     max_order_value: Optional[float] = Query(None, ge=0),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
+    sort_by: Optional[str] = Query(None, description="Sort by: order_id, order_value"),
+    sort_order: str = Query("asc", pattern="^(asc|desc)$", description="asc or desc"),
     user: CurrentUser = Depends(get_search_user),
 ):
     filters = OrderFilterParams(
@@ -100,7 +113,7 @@ def search_orders(
         min_order_value=min_order_value,
         max_order_value=max_order_value,
     )
-    pagination = PaginationParams(page=page, page_size=page_size)
+    pagination = PaginationParams(page=page, page_size=page_size, sort_by=sort_by, sort_order=sort_order)
 
-    raw_query_params: Dict[str, Any] = dict(request.query_params)
+    raw_query_params = _filter_only_params(dict(request.query_params))
     return service.filter_orders(user, filters, pagination, raw_query_params)
