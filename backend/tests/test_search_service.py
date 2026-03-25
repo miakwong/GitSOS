@@ -169,7 +169,7 @@ def test_customer_cannot_see_other_customers_orders(service, other_customer):
 
 def test_owner_only_sees_their_restaurant_orders(service, owner_user):
     # owner1 owns R1 and should only see O1
-    # O2 is at R2, O3 is at R3 and both should be hidden
+    # O2 is at R2, O3 is at R3 — both should be excluded
     filters = OrderFilterParams()
     pagination = PaginationParams(page=1, page_size=10)
 
@@ -182,20 +182,6 @@ def test_owner_only_sees_their_restaurant_orders(service, owner_user):
 
     assert result.meta.total == 1
     assert result.data[0]["restaurant_id"] == "R1"
-
-
-def test_owner_cannot_see_other_restaurant_orders(service, owner_user):
-    # owner1 owns R1, also, R2 and R3 orders must be excluded
-    filters = OrderFilterParams()
-    pagination = PaginationParams(page=1, page_size=10)
-
-    result = service.filter_orders(
-        user=owner_user,
-        filters=filters,
-        pagination=pagination,
-        raw_query_params={},
-    )
-
     restaurant_ids = [order["restaurant_id"] for order in result.data]
     assert "R2" not in restaurant_ids
     assert "R3" not in restaurant_ids

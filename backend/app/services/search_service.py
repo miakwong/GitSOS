@@ -78,7 +78,9 @@ class SearchService:
                 return row_customer == user.user_id
 
             if user.role.value == "owner":
-                # Owner can only see orders placed at their own restaurants
+                # Owner can only see orders placed at their own restaurants.
+                # If owner_restaurant_ids is empty, no orders will match — this is intentional.
+                # An owner with no assigned restaurants should see nothing, not everything.
                 row_restaurant = str(row.get("restaurant_id") or "")
                 return row_restaurant in user.owner_restaurant_ids
 
