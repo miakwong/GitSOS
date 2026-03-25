@@ -66,6 +66,9 @@ class PricingService:
             return (delivery_distance - 3.0) * 0.50
         elif 8.0 <= delivery_distance <= 15.0:
             return 2.50 + (delivery_distance - 8.0) * 0.80
+        # Distance is outside the defined tiers (< 2.0 or > 15.0).
+        # The dataset make sure that all distances are within 2.0–15.0 km,
+        # so this fallback should never be hit in normal usage.
         return 0.00
 
     def _calculate_method_surcharge(self, delivery_method) -> float:
@@ -178,12 +181,9 @@ class PricingService:
                 total=total,
             )
 
-        # If the order_id belongs to a Kaggle historical order, reject it
+        # If the order_id belongs to a Kaggle historical order it will return 404.
         historical_order = self.kaggle_repo.get_order_by_id(order_id)
         if historical_order:
-            raise HTTPException(
-                status_code=403,
-                detail="Kaggle historical orders are read-only and cannot be priced",
-            )
+            raise HTTPException(status_code=404, detail="Order not found")
 
         raise HTTPException(status_code=404, detail="Order not found")

@@ -163,7 +163,7 @@ def test_get_price_breakdown_forbidden_for_other_customer(sample_order, other_cu
 # ------------------------------------------------------------------ #
 
 def test_get_price_breakdown_rejects_historical_order(customer_user):
-    """Kaggle historical orders must never be priced — return 403."""
+    """Kaggle historical orders must never be priced — return 404 to avoid leaking the ID exists."""
     service = PricingService(
         order_repo=FakeOrderRepository(order=None),
         kaggle_repo=FakeKaggleOrderRepository(order={"order_id": "K1"}),
@@ -172,7 +172,8 @@ def test_get_price_breakdown_rejects_historical_order(customer_user):
     with pytest.raises(HTTPException) as exc_info:
         service.get_price_breakdown("K1", customer_user)
 
-    assert exc_info.value.status_code == 403
+    assert exc_info.value.status_code == 404
+    assert exc_info.value.detail == "Order not found"
 
 
 # ------------------------------------------------------------------ #
