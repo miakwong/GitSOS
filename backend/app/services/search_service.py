@@ -156,8 +156,8 @@ class SearchService:
                 {
                     "restaurant_id": rid,
                     "restaurant_name": rname,
-                    "city": r.get("city") or r.get("City"),
-                    "cuisine": r.get("cuisine") or r.get("Cuisine"),
+                    "city": r.get("city") or r.get("City") or r.get("location"),
+                    "cuisine": r.get("cuisine") or r.get("Cuisine") or r.get("preferred_cuisine"),
                 }
             )
 
@@ -226,12 +226,10 @@ class SearchService:
                     "restaurant_id": str(
                         r.get("restaurant_id") or r.get("RestaurantID") or ""
                     ),
-                    "item_name": r.get("item_name")
-                    or r.get("FoodItem")
-                    or r.get("food_item"),
-                    "category": r.get("category") or r.get("Category"),
+                    "item_name": r.get("item_name") or r.get("FoodItem") or r.get("food_item"),
+                    "category": r.get("category") or r.get("Category") or r.get("preferred_cuisine"),
                     "price": _to_float(
-                        r.get("price") or r.get("Price") or r.get("item_price")
+                        r.get("price") or r.get("Price") or r.get("item_price") or r.get("order_value")
                     ),
                 }
             )
@@ -313,7 +311,7 @@ class SearchService:
                     "restaurant_id": str(
                         r.get("restaurant_id") or r.get("RestaurantID") or ""
                     ),
-                    "order_status": r.get("order_status") or r.get("OrderStatus"),
+                    "order_status": r.get("order_status") or r.get("OrderStatus") or r.get("food_condition"),
                     "order_value": _to_float(
                         r.get("order_value") or r.get("OrderValue")
                     ),
