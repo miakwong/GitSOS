@@ -2,7 +2,7 @@
 
 **Project:** GitSOS Food Delivery Platform
 **Meeting Date:** Mar. 12th
-**Attendees:** Mia Kuang (35154913), Nikki Sidhu (61190260), Kiana Nazembokaei (49117518)
+**Attendees:** Mia Kuang (35154913), Nikki Sidhu (61190260), Kiana Nazembokaei (49117518), Mason Liu (10288041)
 
 ---
 

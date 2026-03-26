@@ -126,3 +126,90 @@ def test_get_by_food_item_not_found():
 def test_get_by_food_item_multiple_results():
     results = repo.get_by_food_item("Burger")
     assert all(o.food_item == "Burger" for o in results)
+
+
+# ------------------------------------------------------------------ #
+# get_median_price — Three-tier fallback
+# ------------------------------------------------------------------ #
+# The mock_csv fixture gives us two rows:
+#   restaurant_id = 10, food_item = "Pasta",  order_value = 30.0
+#   restaurant_id = 20, food_item = "Burger", order_value = 20.0
+
+
+def test_get_median_price_level1_exact_match():
+    """Lv. 1: exact restaurant_id, food_item combo found -> return its median."""
+    result = repo.get_median_price(10, "Pasta")
+    assert result == 30.0
+
+
+def test_get_median_price_level2_global_fallback():
+    """
+    Lv. 2: food_item exists globally but NOT at the given restaurant.
+    restaurant_id = 99 has no Pasta, but Pasta exists at restaurant 10.
+    """
+    result = repo.get_median_price(99, "Pasta")
+    assert result == 30.0
+
+
+def test_get_median_price_level3_default_price():
+    """Lv. 3: food_item not in Kaggle at all -> return $25.00 default."""
+    result = repo.get_median_price(99, "UnknownDish")
+    assert result == 25.00
+
+
+def test_get_median_price_uses_median_not_average():
+    """
+    When there are multiple prices for the same combo, the function
+    should return the MEDIAN, not the average.
+    Prices: [10.0, 20.0, 50.0] -> median = 20.0, average = 26.67
+    """
+    rows = [
+        {
+            "order_id": "X1", "restaurant_id": "5", "food_item": "Sushi",
+            "order_value": "10.0", "order_time": "2024-01-01",
+            "customer_id": "c1", "delivery_distance": "3.0",
+            "delivery_time_actual": "1.0", "delivery_delay": "0.0",
+        },
+        {
+            "order_id": "X2", "restaurant_id": "5", "food_item": "Sushi",
+            "order_value": "20.0", "order_time": "2024-01-01",
+            "customer_id": "c2", "delivery_distance": "3.0",
+            "delivery_time_actual": "1.0", "delivery_delay": "0.0",
+        },
+        {
+            "order_id": "X3", "restaurant_id": "5", "food_item": "Sushi",
+            "order_value": "50.0", "order_time": "2024-01-01",
+            "customer_id": "c3", "delivery_distance": "3.0",
+            "delivery_time_actual": "1.0", "delivery_delay": "0.0",
+        },
+    ]
+    with patch.object(repo, "_load_csv", return_value=rows):
+        result = repo.get_median_price(5, "Sushi")
+
+    assert result == 20.0   # median, not average = 26.67
+
+
+def test_get_median_price_level2_uses_global_median():
+    """
+    Lv. 2 global fallback should also use the MEDIAN across all restaurants.
+    Same food_item at two different restaurants: [10.0, 40.0] -> median = 25.0
+    """
+    rows = [
+        {
+            "order_id": "Y1", "restaurant_id": "1", "food_item": "Tacos",
+            "order_value": "10.0", "order_time": "2024-01-01",
+            "customer_id": "c1", "delivery_distance": "3.0",
+            "delivery_time_actual": "1.0", "delivery_delay": "0.0",
+        },
+        {
+            "order_id": "Y2", "restaurant_id": "2", "food_item": "Tacos",
+            "order_value": "40.0", "order_time": "2024-01-01",
+            "customer_id": "c2", "delivery_distance": "3.0",
+            "delivery_time_actual": "1.0", "delivery_delay": "0.0",
+        },
+    ]
+    with patch.object(repo, "_load_csv", return_value=rows):
+        # restaurant_id = 99 not in data -> falls back to global Tacos median
+        result = repo.get_median_price(99, "Tacos")
+
+    assert result == 25.0  # median of [10.0, 40.0]

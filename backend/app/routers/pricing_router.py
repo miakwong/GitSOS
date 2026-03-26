@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends
+from typing import List, Optional
+
+from fastapi import APIRouter, Depends, Query
 
 from app.dependencies import get_current_user
 from app.schemas.pricing import PriceBreakdownResponse, PricingAnalyticsResponse
