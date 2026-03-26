@@ -174,20 +174,9 @@ class DeliveryService:
             weather_condition=weather_condition,
         )
 
-        records = []
         times = []
         delays = []
         for order in orders:
-            records.append(DeliveryInfo(
-                order_id=str(order.order_id),
-                delivery_distance=order.delivery_distance,
-                delivery_method=order.delivery_method.value,
-                traffic_condition=order.traffic_condition.value,
-                weather_condition=order.weather_condition.value,
-                delivery_time=order.actual_delivery_time,
-                delivery_delay=order.delivery_delay,
-                is_historical=False,
-            ))
             if order.actual_delivery_time is not None:
                 times.append(order.actual_delivery_time)
             if order.delivery_delay is not None:
@@ -199,10 +188,9 @@ class DeliveryService:
         return DeliveryAnalytics(
             traffic_condition=traffic_condition,
             weather_condition=weather_condition,
-            total_orders=len(records),
+            total_orders=len(orders),
             avg_delivery_time=avg_time,
             avg_delivery_delay=avg_delay,
-            records=records,
         )
 
     def record_delivery_outcome(

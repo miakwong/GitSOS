@@ -35,4 +35,3 @@ class DeliveryAnalytics(BaseModel):
     total_orders: int
     avg_delivery_time: Optional[float] = None   # average actual delivery time in minutes
     avg_delivery_delay: Optional[float] = None  # average delay in minutes
-    records: list[DeliveryInfo]
