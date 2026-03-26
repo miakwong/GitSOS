@@ -216,7 +216,7 @@ class PricingService:
         total_revenue = 0.0
 
         for order in orders:
-            food_price = self._round_money(order.order_value)
+            food_price = self._round_money(self._get_food_price(order.restaurant_id, order.food_item))
             delivery_fee = self._calculate_delivery_fee(order)
             subtotal = self._round_money(food_price + delivery_fee.total_delivery_fee)
             tax = self._round_money(subtotal * self.TAX_RATE)

@@ -377,7 +377,8 @@ def test_analytics_admin_can_access(analytics_admin, two_orders):
         kaggle_repo=FakeKaggleOrderRepository(order=None),
     )
 
-    result = service.get_pricing_analytics(analytics_admin)
+    with patch("app.services.pricing_service.get_median_price", return_value=15.00):
+        result = service.get_pricing_analytics(analytics_admin)
 
     assert result is not None
 
@@ -388,34 +389,43 @@ def test_analytics_total_orders(analytics_admin, two_orders):
         kaggle_repo=FakeKaggleOrderRepository(order=None),
     )
 
-    result = service.get_pricing_analytics(analytics_admin)
+    with patch("app.services.pricing_service.get_median_price", return_value=15.00):
+        result = service.get_pricing_analytics(analytics_admin)
 
     assert result.total_orders == 2
 
 
 def test_analytics_min_max_avg_order_value(analytics_admin, two_orders):
+    """
+    With get_median_price mocked to $15.00:
+      order_a (Bike, 4km, Low, Sunny):  $15 + $4.50 delivery = $19.50, tax $0.98 -> total $20.48
+      order_b (Car,  6km, High, Rainy): $15 + $10.50 delivery = $25.50, tax $1.28 -> total $26.78
+    """
     service = PricingService(
         order_repo=FakeOrderRepoForAnalytics(orders=two_orders),
         kaggle_repo=FakeKaggleOrderRepository(order=None),
     )
 
-    result = service.get_pricing_analytics(analytics_admin)
+    with patch("app.services.pricing_service.get_median_price", return_value=15.00):
+        result = service.get_pricing_analytics(analytics_admin)
 
+    assert result.min_order_value == 20.48
+    assert result.max_order_value == 26.78
     assert result.avg_order_value == round(result.total_revenue / result.total_orders, 2)
     assert result.min_order_value < result.max_order_value
-    assert result.min_order_value > 20.0
-    assert result.max_order_value > 40.0
 
 
 def test_analytics_total_revenue_is_positive(analytics_admin, two_orders):
+    """total_revenue = $20.48 + $26.78 = $47.26 (both orders use Kaggle price)"""
     service = PricingService(
         order_repo=FakeOrderRepoForAnalytics(orders=two_orders),
         kaggle_repo=FakeKaggleOrderRepository(order=None),
     )
 
-    result = service.get_pricing_analytics(analytics_admin)
+    with patch("app.services.pricing_service.get_median_price", return_value=15.00):
+        result = service.get_pricing_analytics(analytics_admin)
 
-    assert result.total_revenue > 20.0 + 40.0
+    assert result.total_revenue == 47.26
 
 
 def test_analytics_empty_orders(analytics_admin):
