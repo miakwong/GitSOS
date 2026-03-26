@@ -6,7 +6,7 @@ Usage (from project root):
 
 Creates three test accounts (skips any that already exist):
     admin@test.com    / Admin1234     role: admin
-    owner@test.com    / Owner1234     role: owner  (restaurant_id: 16)
+    owner@test.com    / Owner1234     role: owner  (restaurant_id: 0)
     customer@test.com / Customer1234  role: customer
 """
 
@@ -22,7 +22,7 @@ from app.services.auth_service import AuthService
 USERS = [
     UserCreate(email="admin@test.com", password="Admin1234", role="admin"),
     UserCreate(
-        email="owner@test.com", password="Owner1234", role="owner", restaurant_id=16
+        email="owner@test.com", password="Owner1234", role="owner", restaurant_id=0
     ),
     UserCreate(email="customer@test.com", password="Customer1234", role="customer"),
 ]
