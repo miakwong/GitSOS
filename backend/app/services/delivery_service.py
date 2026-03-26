@@ -1,7 +1,8 @@
 # Service layer for delivery info retrieval and outcome recording
 from app.repositories.order_repository import KaggleOrderRepository, OrderRepository
-from app.schemas.delivery import DeliveryInfo, DeliveryOutcomeCreate
-from app.schemas.order import Order, OrderStatus
+from app.schemas.delivery import DeliveryAnalytics, DeliveryInfo, DeliveryOutcomeCreate
+from app.schemas.order import Order, OrderStatus, TrafficCondition, WeatherCondition
+from typing import Optional
 from app.schemas.user import UserInDB
 from fastapi import HTTPException, status
 
@@ -137,6 +138,60 @@ class DeliveryService:
                 ))
 
         return results
+
+    def get_delivery_analytics(
+        self,
+        user: UserInDB,
+        traffic_condition: Optional[str] = None,
+        weather_condition: Optional[str] = None,
+    ) -> DeliveryAnalytics:
+        if user.role != "admin":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied: only admins can view delivery analytics",
+            )
+
+        valid_traffic = {t.value for t in TrafficCondition}
+        valid_weather = {w.value for w in WeatherCondition}
+
+        if traffic_condition:
+            traffic_condition = traffic_condition.capitalize()
+            if traffic_condition not in valid_traffic:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail=f"Invalid traffic_condition. Valid values: {', '.join(sorted(valid_traffic))}",
+                )
+        if weather_condition:
+            weather_condition = weather_condition.capitalize()
+            if weather_condition not in valid_weather:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail=f"Invalid weather_condition. Valid values: {', '.join(sorted(valid_weather))}",
+                )
+
+        orders = self.order_repo.get_orders_by_conditions(
+            traffic_condition=traffic_condition,
+            weather_condition=weather_condition,
+        )
+
+        times = []
+        delays = []
+        for order in orders:
+            if order.actual_delivery_time is not None:
+                times.append(order.actual_delivery_time)
+            if order.delivery_delay is not None:
+                delays.append(order.delivery_delay)
+
+        avg_time = round(sum(times) / len(times), 2) if times else None
+        avg_delay = round(sum(delays) / len(delays), 2) if delays else None
+
+        return DeliveryAnalytics(
+            traffic_condition=traffic_condition,
+            weather_condition=weather_condition,
+            total_orders=len(orders),
+            avg_delivery_time=avg_time,
+            avg_delivery_delay=avg_delay,
+        )
 
     def record_delivery_outcome(
         self, order_id: str, outcome: DeliveryOutcomeCreate, user: UserInDB

@@ -26,3 +26,12 @@ class DeliveryInfo(BaseModel):
 
     # True if this came from the Kaggle dataset, False if it's a system-created order
     is_historical: bool = False
+
+
+# analytics summary for delivery records filtered by traffic/weather condition
+class DeliveryAnalytics(BaseModel):
+    traffic_condition: Optional[str] = None
+    weather_condition: Optional[str] = None
+    total_orders: int
+    avg_delivery_time: Optional[float] = None   # average actual delivery time in minutes
+    avg_delivery_delay: Optional[float] = None  # average delay in minutes
