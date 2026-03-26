@@ -1,9 +1,6 @@
-from types import SimpleNamespace
-from unittest.mock import patch
-from uuid import uuid4
-
 import pytest
 from fastapi import HTTPException
+from uuid import uuid4
 
 from app.schemas.order import (
     DeliveryMethod,
@@ -12,6 +9,7 @@ from app.schemas.order import (
     TrafficCondition,
     WeatherCondition,
 )
+from app.schemas.user import UserInDB
 from app.services.pricing_service import PricingService
 
 
@@ -39,6 +37,11 @@ class FakeKaggleOrderRepository:
 # Shared fixtures
 # ------------------------------------------------------------------ #
 
+CUSTOMER_ID = uuid4()
+ADMIN_ID = uuid4()
+OTHER_ID = uuid4()
+
+
 @pytest.fixture
 def sample_order():
     """
@@ -51,7 +54,7 @@ def sample_order():
     """
     return Order(
         order_id=uuid4(),
-        customer_id="customer-1",
+        customer_id=str(CUSTOMER_ID),
         restaurant_id=101,
         food_item="Burger",
         order_time="2026-03-16T12:00:00Z",
@@ -66,24 +69,24 @@ def sample_order():
 
 @pytest.fixture
 def customer_user():
-    return SimpleNamespace(id="customer-1", role="customer")
+    return UserInDB(id=CUSTOMER_ID, email="customer@example.com", role="customer", password_hash="hashed")
 
 
 @pytest.fixture
 def other_customer():
-    return SimpleNamespace(id="someone-else", role="customer")
+    return UserInDB(id=OTHER_ID, email="other@example.com", role="customer", password_hash="hashed")
 
 
 @pytest.fixture
 def admin_user():
-    return SimpleNamespace(id="admin-1", role="admin")
+    return UserInDB(id=ADMIN_ID, email="admin@example.com", role="admin", password_hash="hashed")
 
 
 # ------------------------------------------------------------------ #
 # Test: successful price breakdown — verify every number
 # ------------------------------------------------------------------ #
 
-def test_get_price_breakdown_success(sample_order, customer_user):
+def test_get_price_breakdown_success(mocker, sample_order, customer_user):
     """
     With get_median_price mocked to return $15.00 we can verify
     every calculated number exactly.
@@ -101,13 +104,13 @@ def test_get_price_breakdown_success(sample_order, customer_user):
       tax                 = $1.10  (22.00 * 5%)
       total               = $23.10 (22.00 + 1.10)
     """
+    mocker.patch("app.services.pricing_service.get_median_price", return_value=15.00)
     service = PricingService(
         order_repo=FakeOrderRepository(order=sample_order),
         kaggle_repo=FakeKaggleOrderRepository(order=None),
     )
 
-    with patch("app.services.pricing_service.get_median_price", return_value=15.00):
-        result = service.get_price_breakdown(str(sample_order.order_id), customer_user)
+    result = service.get_price_breakdown(str(sample_order.order_id), customer_user)
 
     assert result.order_id == str(sample_order.order_id)
     assert result.food_price == 15.00
@@ -131,15 +134,15 @@ def test_get_price_breakdown_success(sample_order, customer_user):
 # Test: access control
 # ------------------------------------------------------------------ #
 
-def test_get_price_breakdown_admin_can_view_any_order(sample_order, admin_user):
+def test_get_price_breakdown_admin_can_view_any_order(mocker, sample_order, admin_user):
     """Admin should be able to see any order's breakdown."""
+    mocker.patch("app.services.pricing_service.get_median_price", return_value=15.00)
     service = PricingService(
         order_repo=FakeOrderRepository(order=sample_order),
         kaggle_repo=FakeKaggleOrderRepository(order=None),
     )
 
-    with patch("app.services.pricing_service.get_median_price", return_value=15.00):
-        result = service.get_price_breakdown(str(sample_order.order_id), admin_user)
+    result = service.get_price_breakdown(str(sample_order.order_id), admin_user)
 
     assert result.order_id == str(sample_order.order_id)
 
@@ -232,7 +235,6 @@ def test_distance_fee_tier3_mid():
 def test_distance_fee_tier3_upper_boundary():
     """At exactly 15.0 km (max): $2.50 + (15.0 - 8.0) * 0.80 = $8.10"""
     service = PricingService()
-    # Use pytest.approx to handle floating point precision (e.g. 1.234500000000001)
     assert service._calculate_distance_fee(15.0) == pytest.approx(8.10)
 
 
@@ -285,22 +287,22 @@ def test_weather_surcharge_snowy():
 
 
 # ------------------------------------------------------------------ #
-# Test: pricing is deterministic — same inputs always give same output
+# Test: pricing is deterministic — same inputs always will give same output
 # ------------------------------------------------------------------ #
 
-def test_pricing_is_deterministic(sample_order, customer_user):
+def test_pricing_is_deterministic(mocker, sample_order, customer_user):
     """
     Calling get_price_breakdown twice with the same order must return
     the exact same numbers — no randomness allowed.
     """
+    mocker.patch("app.services.pricing_service.get_median_price", return_value=15.00)
     service = PricingService(
         order_repo=FakeOrderRepository(order=sample_order),
         kaggle_repo=FakeKaggleOrderRepository(order=None),
     )
 
-    with patch("app.services.pricing_service.get_median_price", return_value=15.00):
-        result1 = service.get_price_breakdown(str(sample_order.order_id), customer_user)
-        result2 = service.get_price_breakdown(str(sample_order.order_id), customer_user)
+    result1 = service.get_price_breakdown(str(sample_order.order_id), customer_user)
+    result2 = service.get_price_breakdown(str(sample_order.order_id), customer_user)
 
     assert result1.food_price == result2.food_price
     assert result1.delivery_fee.total_delivery_fee == result2.delivery_fee.total_delivery_fee
@@ -327,17 +329,17 @@ class FakeOrderRepoForAnalytics:
 
 @pytest.fixture
 def analytics_admin():
-    return SimpleNamespace(id="admin-1", role="admin")
+    return UserInDB(id=uuid4(), email="admin@example.com", role="admin", password_hash="hashed")
 
 
 @pytest.fixture
 def analytics_customer():
-    return SimpleNamespace(id="cust-1", role="customer")
+    return UserInDB(id=uuid4(), email="customer@example.com", role="customer", password_hash="hashed")
 
 
 @pytest.fixture
 def analytics_owner():
-    return SimpleNamespace(id="owner-1", role="owner", restaurant_id=101)
+    return UserInDB(id=uuid4(), email="owner@example.com", role="owner", password_hash="hashed", restaurant_id=101)
 
 
 @pytest.fixture
@@ -371,43 +373,43 @@ def two_orders():
     return [order_a, order_b]
 
 
-def test_analytics_admin_can_access(analytics_admin, two_orders):
+def test_analytics_admin_can_access(mocker, analytics_admin, two_orders):
+    mocker.patch("app.services.pricing_service.get_median_price", return_value=15.00)
     service = PricingService(
         order_repo=FakeOrderRepoForAnalytics(orders=two_orders),
         kaggle_repo=FakeKaggleOrderRepository(order=None),
     )
 
-    with patch("app.services.pricing_service.get_median_price", return_value=15.00):
-        result = service.get_pricing_analytics(analytics_admin)
+    result = service.get_pricing_analytics(analytics_admin)
 
     assert result is not None
 
 
-def test_analytics_total_orders(analytics_admin, two_orders):
+def test_analytics_total_orders(mocker, analytics_admin, two_orders):
+    mocker.patch("app.services.pricing_service.get_median_price", return_value=15.00)
     service = PricingService(
         order_repo=FakeOrderRepoForAnalytics(orders=two_orders),
         kaggle_repo=FakeKaggleOrderRepository(order=None),
     )
 
-    with patch("app.services.pricing_service.get_median_price", return_value=15.00):
-        result = service.get_pricing_analytics(analytics_admin)
+    result = service.get_pricing_analytics(analytics_admin)
 
     assert result.total_orders == 2
 
 
-def test_analytics_min_max_avg_order_value(analytics_admin, two_orders):
+def test_analytics_min_max_avg_order_value(mocker, analytics_admin, two_orders):
     """
     With get_median_price mocked to $15.00:
       order_a (Bike, 4km, Low, Sunny):  $15 + $4.50 delivery = $19.50, tax $0.98 -> total $20.48
       order_b (Car,  6km, High, Rainy): $15 + $10.50 delivery = $25.50, tax $1.28 -> total $26.78
     """
+    mocker.patch("app.services.pricing_service.get_median_price", return_value=15.00)
     service = PricingService(
         order_repo=FakeOrderRepoForAnalytics(orders=two_orders),
         kaggle_repo=FakeKaggleOrderRepository(order=None),
     )
 
-    with patch("app.services.pricing_service.get_median_price", return_value=15.00):
-        result = service.get_pricing_analytics(analytics_admin)
+    result = service.get_pricing_analytics(analytics_admin)
 
     assert result.min_order_value == 20.48
     assert result.max_order_value == 26.78
@@ -415,15 +417,15 @@ def test_analytics_min_max_avg_order_value(analytics_admin, two_orders):
     assert result.min_order_value < result.max_order_value
 
 
-def test_analytics_total_revenue_is_positive(analytics_admin, two_orders):
+def test_analytics_total_revenue_is_positive(mocker, analytics_admin, two_orders):
     """total_revenue = $20.48 + $26.78 = $47.26 (both orders use Kaggle price)"""
+    mocker.patch("app.services.pricing_service.get_median_price", return_value=15.00)
     service = PricingService(
         order_repo=FakeOrderRepoForAnalytics(orders=two_orders),
         kaggle_repo=FakeKaggleOrderRepository(order=None),
     )
 
-    with patch("app.services.pricing_service.get_median_price", return_value=15.00):
-        result = service.get_pricing_analytics(analytics_admin)
+    result = service.get_pricing_analytics(analytics_admin)
 
     assert result.total_revenue == 47.26
 
