@@ -24,7 +24,7 @@ This creates three accounts (skips any that already exist):
 | Email | Password | Role |
 |-------|----------|------|
 | admin@test.com | Admin1234 | admin |
-| owner@test.com | Owner1234 | owner (restaurant 16) |
+| owner@test.com | Owner1234 | owner (restaurant 0) |
 | customer@test.com | Customer1234 | customer |
 
 ### 3. Run tests

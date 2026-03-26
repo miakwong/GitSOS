@@ -1,5 +1,8 @@
 # Order service for business logic
+from pathlib import Path
+
 from app.repositories.order_repository import KaggleOrderRepository, OrderRepository
+from app.repositories.user_repository import UserRepository
 from app.schemas.order import (
     CANCELLABLE_STATUSES,
     MODIFIABLE_STATUSES,
@@ -10,6 +13,8 @@ from app.schemas.order import (
     OrderUpdate,
 )
 from fastapi import HTTPException, status
+
+
 # Service layer for order creation and validation
 class OrderService:
 
@@ -17,18 +22,25 @@ class OrderService:
         self,
         order_repo: OrderRepository = None,
         kaggle_repo: KaggleOrderRepository = None,
+        user_repo: UserRepository = None,
     ):
         self.order_repo = order_repo or OrderRepository()
         self.kaggle_repo = kaggle_repo or KaggleOrderRepository()
+        _users_file = Path(__file__).resolve().parent.parent / "data" / "users.json"
+        self.user_repo = user_repo or UserRepository(_users_file)
 
-    # Validate that customer_id exists in Kaggle data
+    # Validate that customer_id exists in Kaggle data or is a registered system user
     def _validate_customer_exists(self, customer_id: str) -> None:
-        customers = self.kaggle_repo.get_customers()
-        if customer_id not in customers:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Customer with ID '{customer_id}' does not exist",
-            )
+        kaggle_customers = self.kaggle_repo.get_customers()
+        if customer_id in kaggle_customers:
+            return
+        system_user = self.user_repo.get_user_by_id_str(customer_id)
+        if system_user is not None:
+            return
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Customer with ID '{customer_id}' does not exist",
+        )
 
     # Validate that restaurant_id exists in Kaggle data
     def _validate_restaurant_exists(self, restaurant_id: int) -> None:
@@ -162,7 +174,9 @@ class OrderService:
         return updated_order
 
     # Advance an order through valid workflow transitions (owner only)
-    def advance_order_status(self, order_id: str, new_status: OrderStatus, rest_id: int) -> Order:
+    def advance_order_status(
+        self, order_id: str, new_status: OrderStatus, rest_id: int
+    ) -> Order:
         if self._is_kaggle_order(order_id):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -187,7 +201,7 @@ class OrderService:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Cannot transition order from '{order.order_status.value}' to '{new_status.value}'. "
-                       f"Valid transitions: {[s.value for s in allowed] if allowed else 'none (terminal state)'}",
+                f"Valid transitions: {[s.value for s in allowed] if allowed else 'none (terminal state)'}",
             )
 
         updated = self.order_repo.update_order_status(order_id, new_status)

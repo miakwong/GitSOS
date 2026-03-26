@@ -1,8 +1,9 @@
 # Service layer for delivery info retrieval and outcome recording
+from typing import Optional
+
 from app.repositories.order_repository import KaggleOrderRepository, OrderRepository
 from app.schemas.delivery import DeliveryAnalytics, DeliveryInfo, DeliveryOutcomeCreate
 from app.schemas.order import Order, OrderStatus, TrafficCondition, WeatherCondition
-from typing import Optional
 from app.schemas.user import UserInDB
 from fastapi import HTTPException, status
 
@@ -44,7 +45,7 @@ class DeliveryService:
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="Access denied: this order does not belong to your restaurant",
                 )
-        # admins can see any order 
+        # admins can see any order
 
         return DeliveryInfo(
             order_id=str(order.order_id),
@@ -53,6 +54,26 @@ class DeliveryService:
             traffic_condition=order.traffic_condition.value,
             weather_condition=order.weather_condition.value,
             is_historical=False,
+        )
+
+    @staticmethod
+    def _try_float(value) -> Optional[float]:
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return None
+
+    @staticmethod
+    def _kaggle_row_to_delivery(row: dict) -> DeliveryInfo:
+        dist_raw = row.get("delivery_distance_km") or row.get("delivery_distance")
+        time_raw = row.get("delivery_time_actual") or row.get("delivery_time")
+        delay_raw = row.get("delivery_delay")
+        return DeliveryInfo(
+            order_id=row["order_id"],
+            delivery_distance=DeliveryService._try_float(dist_raw),
+            delivery_time=DeliveryService._try_float(time_raw),
+            delivery_delay=DeliveryService._try_float(delay_raw),
+            is_historical=True,
         )
 
     def _delivery_from_kaggle_order(self, row: dict, user: UserInDB) -> DeliveryInfo:
@@ -65,77 +86,70 @@ class DeliveryService:
 
         # owners can only see orders for their restaurant
         if user.role == "owner":
-            if int(row["restaurant_id"]) != user.restaurant_id:
+            try:
+                rid = int(str(row.get("restaurant_id", "")).lstrip("R"))
+            except ValueError:
+                rid = None
+            if rid != user.restaurant_id:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="Access denied: this order does not belong to your restaurant",
                 )
 
         # Kaggle data is read-only so we only expose it, never modify it
-        return DeliveryInfo(
-            order_id=row["order_id"],
-            delivery_distance=float(row["delivery_distance"]),
-            delivery_time=float(row["delivery_time_actual"]),
-            delivery_delay=float(row["delivery_delay"]),
-            is_historical=True,
-        )
-# combined listing of delivery records for both system orders and Kaggle historical orders
+        return self._kaggle_row_to_delivery(row)
+
+    # combined listing of delivery records for both system orders and Kaggle historical orders
     def list_delivery_records(self, user: UserInDB) -> list[DeliveryInfo]:
         results = []
 
         if user.role == "customer":
             orders = self.order_repo.get_orders_by_customer_id(str(user.id))
             for order in orders:
-                results.append(DeliveryInfo(
-                    order_id=str(order.order_id),
-                    delivery_distance=order.delivery_distance,
-                    delivery_method=order.delivery_method.value,
-                    traffic_condition=order.traffic_condition.value,
-                    weather_condition=order.weather_condition.value,
-                    is_historical=False,
-                ))
+                results.append(
+                    DeliveryInfo(
+                        order_id=str(order.order_id),
+                        delivery_distance=order.delivery_distance,
+                        delivery_method=order.delivery_method.value,
+                        traffic_condition=order.traffic_condition.value,
+                        weather_condition=order.weather_condition.value,
+                        is_historical=False,
+                    )
+                )
 
         elif user.role == "owner":
             orders = self.order_repo.get_orders_by_restaurant_id(user.restaurant_id)
             for order in orders:
-                results.append(DeliveryInfo(
-                    order_id=str(order.order_id),
-                    delivery_distance=order.delivery_distance,
-                    delivery_method=order.delivery_method.value,
-                    traffic_condition=order.traffic_condition.value,
-                    weather_condition=order.weather_condition.value,
-                    is_historical=False,
-                ))
+                results.append(
+                    DeliveryInfo(
+                        order_id=str(order.order_id),
+                        delivery_distance=order.delivery_distance,
+                        delivery_method=order.delivery_method.value,
+                        traffic_condition=order.traffic_condition.value,
+                        weather_condition=order.weather_condition.value,
+                        is_historical=False,
+                    )
+                )
             kaggle_rows = self.kaggle_repo.get_orders_by_restaurant(user.restaurant_id)
             for row in kaggle_rows:
-                results.append(DeliveryInfo(
-                    order_id=row["order_id"],
-                    delivery_distance=float(row["delivery_distance"]),
-                    delivery_time=float(row["delivery_time_actual"]),
-                    delivery_delay=float(row["delivery_delay"]),
-                    is_historical=True,
-                ))
+                results.append(self._kaggle_row_to_delivery(row))
 
         else:
             orders = self.order_repo.get_all_orders()
             for order in orders:
-                results.append(DeliveryInfo(
-                    order_id=str(order.order_id),
-                    delivery_distance=order.delivery_distance,
-                    delivery_method=order.delivery_method.value,
-                    traffic_condition=order.traffic_condition.value,
-                    weather_condition=order.weather_condition.value,
-                    is_historical=False,
-                ))
+                results.append(
+                    DeliveryInfo(
+                        order_id=str(order.order_id),
+                        delivery_distance=order.delivery_distance,
+                        delivery_method=order.delivery_method.value,
+                        traffic_condition=order.traffic_condition.value,
+                        weather_condition=order.weather_condition.value,
+                        is_historical=False,
+                    )
+                )
             kaggle_rows = self.kaggle_repo.get_all_orders()
             for row in kaggle_rows:
-                results.append(DeliveryInfo(
-                    order_id=row["order_id"],
-                    delivery_distance=float(row["delivery_distance"]),
-                    delivery_time=float(row["delivery_time_actual"]),
-                    delivery_delay=float(row["delivery_delay"]),
-                    is_historical=True,
-                ))
+                results.append(self._kaggle_row_to_delivery(row))
 
         return results
 

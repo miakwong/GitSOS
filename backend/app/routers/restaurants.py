@@ -48,8 +48,10 @@ def add_menu_item(
     body: MenuItemCreate,
     owner: tuple = Depends(get_current_owner),
 ):
-    if str(owner[1]) != restaurant_id:
-        raise HTTPException(status_code=403, detail="Not authorized for this restaurant")
+    if str(owner[1]) != restaurant_id.lstrip("R"):
+        raise HTTPException(
+            status_code=403, detail="Not authorized for this restaurant"
+        )
     return menu_service.create_menu_item(restaurant_id, body)
 
 
@@ -60,8 +62,10 @@ def update_menu_item(
     body: MenuItemUpdate,
     owner: tuple = Depends(get_current_owner),
 ):
-    if str(owner[1]) != restaurant_id:
-        raise HTTPException(status_code=403, detail="Not authorized for this restaurant")
+    if str(owner[1]) != restaurant_id.lstrip("R"):
+        raise HTTPException(
+            status_code=403, detail="Not authorized for this restaurant"
+        )
     result = menu_service.update_menu_item(restaurant_id, food_item, body)
     if result is None:
         raise HTTPException(status_code=404, detail="Menu item not found")
@@ -74,8 +78,10 @@ def delete_menu_item(
     food_item: str,
     owner: tuple = Depends(get_current_owner),
 ):
-    if str(owner[1]) != restaurant_id:
-        raise HTTPException(status_code=403, detail="Not authorized for this restaurant")
+    if str(owner[1]) != restaurant_id.lstrip("R"):
+        raise HTTPException(
+            status_code=403, detail="Not authorized for this restaurant"
+        )
     found = menu_service.delete_menu_item(restaurant_id, food_item)
     if not found:
         raise HTTPException(status_code=404, detail="Menu item not found")
@@ -95,8 +101,10 @@ def update_profile(
     body: RestaurantProfileUpdate,
     owner: tuple = Depends(get_current_owner),
 ):
-    if str(owner[1]) != restaurant_id:
-        raise HTTPException(status_code=403, detail="Not authorized for this restaurant")
+    if str(owner[1]) != restaurant_id.lstrip("R"):
+        raise HTTPException(
+            status_code=403, detail="Not authorized for this restaurant"
+        )
     result = restaurant_service.update_profile(restaurant_id, body)
     if result is None:
         raise HTTPException(status_code=404, detail="Restaurant not found")

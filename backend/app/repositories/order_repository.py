@@ -71,7 +71,7 @@ class OrderRepository:
                 return Order(**order)
         return None
 
-    # Retrieve all system created orders 
+    # Retrieve all system created orders
     def get_all_orders(self) -> list[Order]:
         orders = self._load_orders()
         return [Order(**o) for o in orders]
@@ -169,10 +169,27 @@ class KaggleOrderRepository:
                 self._orders.append(row)
         return self._orders
 
+    @staticmethod
+    def _parse_restaurant_id(raw: str) -> Optional[int]:
+        """Parse restaurant ID — handles plain integers and 'R<n>' prefix format."""
+        try:
+            return int(raw)
+        except (ValueError, TypeError):
+            pass
+        try:
+            return int(str(raw).lstrip("R"))
+        except (ValueError, TypeError):
+            return None
+
     # Get all unique restaurant IDs from Kaggle data
     def get_restaurants(self) -> set[int]:
         orders = self._load_orders()
-        return {int(o["restaurant_id"]) for o in orders if o.get("restaurant_id")}
+        result = set()
+        for o in orders:
+            parsed = self._parse_restaurant_id(o.get("restaurant_id", ""))
+            if parsed is not None:
+                result.add(parsed)
+        return result
 
     # Get all unique customer IDs from Kaggle data
     def get_customers(self) -> set[str]:
@@ -185,7 +202,7 @@ class KaggleOrderRepository:
         return {
             o["food_item"]
             for o in orders
-            if o.get("restaurant_id") and int(o["restaurant_id"]) == restaurant_id
+            if self._parse_restaurant_id(o.get("restaurant_id", "")) == restaurant_id
         }
 
     # Retrieve a Kaggle order by ID (read-only)
@@ -203,4 +220,8 @@ class KaggleOrderRepository:
     # Get Kaggle orders for a specific restaurant
     def get_orders_by_restaurant(self, restaurant_id: int) -> list[dict]:
         orders = self._load_orders()
-        return [o for o in orders if o.get("restaurant_id") and int(o["restaurant_id"]) == restaurant_id]
+        return [
+            o
+            for o in orders
+            if self._parse_restaurant_id(o.get("restaurant_id", "")) == restaurant_id
+        ]
