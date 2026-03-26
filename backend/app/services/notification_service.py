@@ -37,8 +37,17 @@ class NotificationService:
                 return user.id
         return None
 
+    @staticmethod
+    def _parse_uuid(value: str) -> uuid.UUID | None:
+        try:
+            return uuid.UUID(str(value))
+        except (ValueError, AttributeError):
+            return None
+
     def notify_order_created(self, order: Order) -> None:
-        customer_id = uuid.UUID(order.customer_id)
+        customer_id = self._parse_uuid(order.customer_id)
+        if customer_id is None:
+            return
         self._create(
             customer_id,
             order.order_id,
@@ -55,7 +64,9 @@ class NotificationService:
             )
 
     def notify_order_status_changed(self, order: Order) -> None:
-        customer_id = uuid.UUID(order.customer_id)
+        customer_id = self._parse_uuid(order.customer_id)
+        if customer_id is None:
+            return
         self._create(
             customer_id,
             order.order_id,
