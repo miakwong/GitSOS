@@ -6,7 +6,7 @@ from fastapi import HTTPException
 
 from app.repositories.order_repository import OrderRepository, KaggleOrderRepository
 from app.repositories.kaggle_order_repository import get_median_price
-from app.schemas.pricing import DeliveryFeeBreakdown, PriceBreakdownResponse
+from app.schemas.pricing import DeliveryFeeBreakdown, PriceBreakdownResponse, PricingAnalyticsResponse
 
 
 class PricingService:
@@ -189,3 +189,45 @@ class PricingService:
             raise HTTPException(status_code=404, detail="Order not found")
 
         raise HTTPException(status_code=404, detail="Order not found")
+
+    def get_pricing_analytics(self, current_user) -> PricingAnalyticsResponse:
+        # Only admins can view pricing analytics
+        if current_user.role != "admin":
+            raise HTTPException(
+                status_code=403,
+                detail="Only admins can view pricing analytics",
+            )
+
+        # Load all system-created orders
+        orders = self.order_repo.get_all_orders()
+
+        # If no orders exist, return zero/None response
+        if not orders:
+            return PricingAnalyticsResponse(
+                total_orders=0,
+                total_revenue=0.0,
+                avg_order_value=None,
+                min_order_value=None,
+                max_order_value=None,
+            )
+
+        # Compute the full total which is food + delivery + tax for each order
+        order_totals = []
+        total_revenue = 0.0
+
+        for order in orders:
+            food_price = self._round_money(self._get_food_price(order.restaurant_id, order.food_item))
+            delivery_fee = self._calculate_delivery_fee(order)
+            subtotal = self._round_money(food_price + delivery_fee.total_delivery_fee)
+            tax = self._round_money(subtotal * self.TAX_RATE)
+            order_total = self._round_money(subtotal + tax)
+            order_totals.append(order_total)
+            total_revenue += order_total
+
+        return PricingAnalyticsResponse(
+            total_orders=len(orders),
+            total_revenue=self._round_money(total_revenue),
+            avg_order_value=self._round_money(total_revenue / len(orders)),
+            min_order_value=self._round_money(min(order_totals)),
+            max_order_value=self._round_money(max(order_totals)),
+        )
