@@ -36,6 +36,12 @@ class UserRepository:
     def get_user_by_id(self, user_id: UUID) -> Optional[UserInDB]:
         return next((u for u in self.users if u.id == user_id), None)
 
+    def get_user_by_id_str(self, user_id_str: str) -> Optional[UserInDB]:
+        try:
+            return self.get_user_by_id(UUID(user_id_str))
+        except (ValueError, AttributeError):
+            return None
+
     def get_user_by_email(self, email: str) -> Optional[UserInDB]:
         return next((u for u in self.users if u.email.lower() == email.lower()), None)
 
