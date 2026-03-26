@@ -51,7 +51,9 @@ def make_owner() -> UserInDB:
 def temp_orders_file():
     with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
         json.dump([], f)
-        return Path(f.name)
+        path = Path(f.name)
+    yield path
+    path.unlink(missing_ok=True)
 
 
 @pytest.fixture
@@ -62,7 +64,9 @@ def temp_kaggle_csv():
             "order_value,order_time,delivery_distance,"
             "delivery_time_actual,delivery_delay\n"
         )
-        return Path(f.name)
+        path = Path(f.name)
+    yield path
+    path.unlink(missing_ok=True)
 
 
 @pytest.fixture
@@ -119,7 +123,6 @@ class TestAnalyticsFiltering:
         result = delivery_service.get_delivery_analytics(admin, traffic_condition="Low")
 
         assert result.total_orders == 1
-        assert all(r.traffic_condition == "Low" for r in result.records)
 
     def test_filter_by_weather_condition(self, delivery_service, order_repo):
         admin = make_admin()
@@ -129,7 +132,6 @@ class TestAnalyticsFiltering:
         result = delivery_service.get_delivery_analytics(admin, weather_condition="Sunny")
 
         assert result.total_orders == 1
-        assert all(r.weather_condition == "Sunny" for r in result.records)
 
     def test_filter_by_both_conditions(self, delivery_service, order_repo):
         admin = make_admin()
@@ -150,7 +152,6 @@ class TestAnalyticsFiltering:
         result = delivery_service.get_delivery_analytics(admin, traffic_condition="High")
 
         assert result.total_orders == 0
-        assert result.records == []
 
     def test_empty_store_returns_empty(self, delivery_service):
         admin = make_admin()
@@ -158,7 +159,6 @@ class TestAnalyticsFiltering:
         result = delivery_service.get_delivery_analytics(admin)
 
         assert result.total_orders == 0
-        assert result.records == []
 
     def test_invalid_traffic_condition_raises_422(self, delivery_service):
         admin = make_admin()

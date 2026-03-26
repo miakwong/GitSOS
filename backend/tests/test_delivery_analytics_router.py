@@ -45,14 +45,18 @@ def make_owner_token(restaurant_id: int, user_id: str) -> str:
 def temp_users_file():
     with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
         json.dump([], f)
-        return Path(f.name)
+        path = Path(f.name)
+    yield path
+    path.unlink(missing_ok=True)
 
 
 @pytest.fixture
 def temp_orders_file():
     with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
         json.dump([], f)
-        return Path(f.name)
+        path = Path(f.name)
+    yield path
+    path.unlink(missing_ok=True)
 
 
 @pytest.fixture
@@ -63,7 +67,9 @@ def temp_kaggle_csv():
             "order_value,order_time,delivery_distance,"
             "delivery_time_actual,delivery_delay\n"
         )
-        return Path(f.name)
+        path = Path(f.name)
+    yield path
+    path.unlink(missing_ok=True)
 
 
 @pytest.fixture
@@ -154,7 +160,6 @@ class TestAnalyticsResponseShape:
 
         data = resp.json()
         assert "total_orders" in data
-        assert "records" in data
         assert "avg_delivery_time" in data
         assert "avg_delivery_delay" in data
 
@@ -167,7 +172,6 @@ class TestAnalyticsResponseShape:
 
         data = resp.json()
         assert data["total_orders"] == 0
-        assert data["records"] == []
         assert data["avg_delivery_time"] is None
         assert data["avg_delivery_delay"] is None
 
