@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import List, Optional
+
 from fastapi import HTTPException
 
 from app.repositories.order_repository import OrderRepository, KaggleOrderRepository

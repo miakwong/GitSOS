@@ -1,6 +1,6 @@
 from types import SimpleNamespace
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
 
 from app.routers import pricing_router
