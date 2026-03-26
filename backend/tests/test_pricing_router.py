@@ -82,21 +82,18 @@ def override_auth_as_customer():
 # ------------------------------------------------------------------ #
 
 def test_get_price_breakdown_route_returns_200(mocker):
-    """The endpoint should return HTTP 200 for a valid order."""
     mocker.patch("app.routers.pricing_router.pricing_service.get_price_breakdown", return_value=MOCK_BREAKDOWN)
     response = client.get(f"/pricing/orders/{ORDER_ID}/breakdown")
     assert response.status_code == 200
 
 
 def test_get_price_breakdown_route_order_id_in_response(mocker):
-    """The response body should include the correct order_id."""
     mocker.patch("app.routers.pricing_router.pricing_service.get_price_breakdown", return_value=MOCK_BREAKDOWN)
     body = client.get(f"/pricing/orders/{ORDER_ID}/breakdown").json()
     assert body["order_id"] == str(ORDER_ID)
 
 
 def test_get_price_breakdown_route_food_price(mocker):
-    """The response should include the food_price from Kaggle lookup."""
     mocker.patch("app.routers.pricing_router.pricing_service.get_price_breakdown", return_value=MOCK_BREAKDOWN)
     body = client.get(f"/pricing/orders/{ORDER_ID}/breakdown").json()
     assert body["food_price"] == 15.00
@@ -117,7 +114,7 @@ def test_get_price_breakdown_route_delivery_fee_breakdown(mocker):
 
 
 def test_get_price_breakdown_route_totals(mocker):
-    """The subtotal, tax, and total should be correct."""
+    """The subtotal, tax, and total should be correct as indicate below."""
     mocker.patch("app.routers.pricing_router.pricing_service.get_price_breakdown", return_value=MOCK_BREAKDOWN)
     body = client.get(f"/pricing/orders/{ORDER_ID}/breakdown").json()
     assert body["subtotal"] == 22.00
@@ -126,7 +123,6 @@ def test_get_price_breakdown_route_totals(mocker):
 
 
 def test_get_price_breakdown_route_returns_404_for_missing_order(mocker):
-    """A non-existent order_id should return 404."""
     mocker.patch(
         "app.routers.pricing_router.pricing_service.get_price_breakdown",
         side_effect=HTTPException(status_code=404, detail="Order not found"),
@@ -137,7 +133,7 @@ def test_get_price_breakdown_route_returns_404_for_missing_order(mocker):
 
 
 def test_get_price_breakdown_route_returns_403_for_wrong_customer(mocker):
-    """A customer who did not place the order should get 403."""
+    """A customer who did not place the order should get a code 403."""
     mocker.patch(
         "app.routers.pricing_router.pricing_service.get_price_breakdown",
         side_effect=HTTPException(status_code=403, detail="You do not have permission to view this order breakdown"),
@@ -171,7 +167,6 @@ def test_analytics_route_returns_correct_fields(mocker):
 
 
 def test_analytics_route_returns_correct_values(mocker):
-    """The analytics response values should match what the service returns."""
     app.dependency_overrides[get_current_user] = lambda: MOCK_ADMIN
     mocker.patch("app.routers.pricing_router.pricing_service.get_pricing_analytics", return_value=MOCK_ANALYTICS)
     body = client.get("/pricing/analytics").json()
@@ -181,7 +176,6 @@ def test_analytics_route_returns_correct_values(mocker):
 
 
 def test_analytics_route_customer_returns_403(mocker):
-    """Non-admin users should be denied access to analytics."""
     mocker.patch(
         "app.routers.pricing_router.pricing_service.get_pricing_analytics",
         side_effect=HTTPException(status_code=403, detail="Only admins can view pricing analytics"),
