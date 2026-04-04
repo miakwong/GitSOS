@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 import app.services.payment_service as service
 import pytest
-from app.schemas.constants import PAYMENT_STATUS_SUCCESS
+from app.schemas.constants import PAYMENT_STATUS_REFUNDED, PAYMENT_STATUS_SUCCESS
 from app.schemas.order import (
     DeliveryMethod,
     Order,
@@ -147,3 +147,46 @@ def test_get_payment_by_order_correct_order_id(mock_repo):
     mock_repo.get_by_order_id.return_value = _make_record()
     result = service.get_payment_by_order(ORDER_ID)
     assert result.order_id == str(ORDER_ID)
+
+
+# refund_payment
+
+
+def test_refund_payment_returns_none_when_no_payment(mock_repo):
+    mock_repo.get_by_order_id.return_value = None
+    result = service.refund_payment(ORDER_ID)
+    assert result is None
+
+
+def test_refund_payment_raises_if_already_refunded(mock_repo):
+    mock_repo.get_by_order_id.return_value = _make_record(status=PAYMENT_STATUS_REFUNDED)
+    with pytest.raises(service.PaymentError):
+        service.refund_payment(ORDER_ID)
+
+
+def test_refund_payment_calls_update_status(mock_repo):
+    mock_repo.get_by_order_id.return_value = _make_record()
+    mock_repo.update_status.return_value = _make_record(status=PAYMENT_STATUS_REFUNDED)
+    service.refund_payment(ORDER_ID)
+    mock_repo.update_status.assert_called_once_with(ORDER_ID, PAYMENT_STATUS_REFUNDED)
+
+
+def test_refund_payment_status_is_refunded(mock_repo):
+    mock_repo.get_by_order_id.return_value = _make_record()
+    mock_repo.update_status.return_value = _make_record(status=PAYMENT_STATUS_REFUNDED)
+    result = service.refund_payment(ORDER_ID)
+    assert result.status == PAYMENT_STATUS_REFUNDED
+
+
+def test_refund_payment_returns_payment_out(mock_repo):
+    mock_repo.get_by_order_id.return_value = _make_record()
+    mock_repo.update_status.return_value = _make_record(status=PAYMENT_STATUS_REFUNDED)
+    result = service.refund_payment(ORDER_ID)
+    assert isinstance(result, PaymentOut)
+
+
+def test_refund_payment_raises_if_update_fails(mock_repo):
+    mock_repo.get_by_order_id.return_value = _make_record()
+    mock_repo.update_status.return_value = None
+    with pytest.raises(service.PaymentError):
+        service.refund_payment(ORDER_ID)

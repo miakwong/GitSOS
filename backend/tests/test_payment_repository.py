@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 import app.repositories.payment_repository as repo
 import pytest
-from app.schemas.constants import PAYMENT_STATUS_PENDING
+from app.schemas.constants import PAYMENT_STATUS_PENDING, PAYMENT_STATUS_REFUNDED
 from app.schemas.payment import PaymentRecord
 
 
@@ -106,3 +106,46 @@ def test_list_all_returns_all():
 def test_list_all_returns_paymentrecord_instances():
     repo.create(make_record())
     assert all(isinstance(r, PaymentRecord) for r in repo.list_all())
+
+
+# update_status
+
+
+def test_update_status_changes_status():
+    # Create a payment then update its status to Refunded
+    r = make_record()
+    repo.create(r)
+    repo.update_status(r.order_id, PAYMENT_STATUS_REFUNDED)
+    updated = repo.get_by_order_id(r.order_id)
+    assert updated.status == PAYMENT_STATUS_REFUNDED
+
+
+def test_update_status_returns_updated_record():
+    r = make_record()
+    repo.create(r)
+    result = repo.update_status(r.order_id, PAYMENT_STATUS_REFUNDED)
+    assert result is not None
+
+
+def test_update_status_returns_none_if_not_found():
+    result = repo.update_status(uuid.uuid4(), PAYMENT_STATUS_REFUNDED)
+    assert result is None
+
+
+def test_update_status_sets_updated_at():
+    # updated_at should be set after status update
+    r = make_record()
+    repo.create(r)
+    result = repo.update_status(r.order_id, PAYMENT_STATUS_REFUNDED)
+    assert result.updated_at is not None
+
+
+def test_update_status_does_not_affect_other_records():
+    # Only the order record you are updating should be updated, not other records
+    r1 = make_record()
+    r2 = make_record()
+    repo.create(r1)
+    repo.create(r2)
+    repo.update_status(r1.order_id, PAYMENT_STATUS_REFUNDED)
+    r2_after = repo.get_by_order_id(r2.order_id)
+    assert r2_after.status == PAYMENT_STATUS_PENDING
