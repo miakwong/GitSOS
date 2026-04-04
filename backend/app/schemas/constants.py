@@ -17,9 +17,9 @@ VALID_PAYMENT_STATUSES = [
 # Payment precondition
 # Order must be Confirmed before payment can be initiated
 # Feat7-FR1, Feat7-FR3
-PAYMENT_REQUIRED_ORDER_STATUS = "Confirmed"
+PAYMENT_REQUIRED_ORDER_STATUS = "Placed"
 
-# Notification types — Feat8-FR1, Feat8-FR2
+# Notification types
 NOTIF_ORDER_CREATED = "ORDER_CREATED"
 NOTIF_ORDER_STATUS_CHANGED = "ORDER_STATUS_CHANGED"
 NOTIF_PAYMENT_STATUS_CHANGED = "PAYMENT_STATUS_CHANGED"
