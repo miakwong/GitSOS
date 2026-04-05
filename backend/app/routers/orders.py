@@ -2,7 +2,8 @@
 from uuid import UUID
 
 from app.dependencies import get_current_admin, get_current_owner
-from app.schemas.order import Order, OrderCreate, OrderStatusUpdate, OrderUpdate
+from app.schemas.order import Order, OrderCreate, OrderStatus, OrderStatusUpdate, OrderUpdate
+from app.services import payment_service
 from app.services.notification_service import NotificationService
 from app.services.order_service import OrderService
 from fastapi import APIRouter, Depends, status
@@ -61,15 +62,26 @@ def update_order(order_id: str, customer_id: str, update_data: OrderUpdate) -> O
     return order_service.update_order(order_id, customer_id, update_data)
 
 
-# Cancel a system order (customer can only cancel their own orders in "Placed" status)
+# Cancel a system order (customer can only cancel their own orders in "Placed" or "Paid" status)
+# Feat11-B1: if the order was already Paid, automatically trigger a refund
 @router.delete(
     "/{order_id}/cancel",
     response_model=Order,
     summary="Cancel a system order",
-    description="Cancels a system order. Only the order owner can cancel, and only if order is in 'Placed' status.",
+    description="Cancels a system order. Only the order owner can cancel, and only if order is in 'Placed' or 'Paid' status. If the order was already paid, a refund is automatically triggered.",
 )
 def cancel_order(order_id: str, customer_id: str) -> Order:
+    # Tell the system to check the order's current status before cancelling
+    # so we can know whether to trigger a refund after
+    existing_order = order_service.get_order(order_id)
+    was_paid = existing_order.order_status == OrderStatus.PAID
+
     order = order_service.cancel_order(order_id, customer_id)
+
+    # Trigger a simulated refund if the order had already been paid or not
+    if was_paid:
+        payment_service.refund_payment(existing_order.order_id)
+
     _notif_service.notify_order_status_changed(order)
     return order
 

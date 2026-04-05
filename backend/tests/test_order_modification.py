@@ -536,10 +536,66 @@ class TestOrderModificationEndpoints:
     def test_cancel_order_ownership_violation(self, order_service, sample_order, monkeypatch):
         from app.routers import orders as orders_router
         monkeypatch.setattr(orders_router, "order_service", order_service)
-        
+
         response = client.delete(
             f"/orders/{sample_order.order_id}/cancel",
             params={"customer_id": "cust-456"}  # Wrong customer
         )
         assert response.status_code == 403
 
+
+
+class TestCancelOrderRefundTrigger:
+
+    def test_cancelling_placed_order_does_not_trigger_refund(self, order_service, sample_order, mocker):
+        # A Placed order has no payment, so the refund_payment should not be called
+        mocker.patch("app.routers.orders.order_service", order_service)
+        mock_payment = mocker.patch("app.routers.orders.payment_service")
+
+        response = client.delete(
+            f"/orders/{sample_order.order_id}/cancel",
+            params={"customer_id": "cust-123"}
+        )
+        assert response.status_code == 200
+        mock_payment.refund_payment.assert_not_called()
+
+    def test_cancelling_paid_order_triggers_refund(self, order_service, sample_order, order_repo, mocker):
+        # Manually advance order to Paid status before cancelling the order
+        order_repo.update_order_status(str(sample_order.order_id), OrderStatus.PAID)
+
+        mocker.patch("app.routers.orders.order_service", order_service)
+        mock_payment = mocker.patch("app.routers.orders.payment_service")
+
+        response = client.delete(
+            f"/orders/{sample_order.order_id}/cancel",
+            params={"customer_id": "cust-123"}
+        )
+        assert response.status_code == 200
+        mock_payment.refund_payment.assert_called_once()
+
+    def test_cancelling_paid_order_refund_uses_correct_order_id(self, order_service, sample_order, order_repo, mocker):
+        # This is to make sure refund_payment is called with the correct order UUID
+        order_repo.update_order_status(str(sample_order.order_id), OrderStatus.PAID)
+
+        mocker.patch("app.routers.orders.order_service", order_service)
+        mock_payment = mocker.patch("app.routers.orders.payment_service")
+
+        client.delete(
+            f"/orders/{sample_order.order_id}/cancel",
+            params={"customer_id": "cust-123"}
+        )
+        mock_payment.refund_payment.assert_called_once_with(sample_order.order_id)
+
+    def test_cancelling_paid_order_still_returns_cancelled_status(self, order_service, sample_order, order_repo, mocker):
+        # Test that even with a refund triggered, the order should still come back as Cancelled status in the response
+        order_repo.update_order_status(str(sample_order.order_id), OrderStatus.PAID)
+
+        mocker.patch("app.routers.orders.order_service", order_service)
+        mocker.patch("app.routers.orders.payment_service")
+
+        response = client.delete(
+            f"/orders/{sample_order.order_id}/cancel",
+            params={"customer_id": "cust-123"}
+        )
+        assert response.status_code == 200
+        assert response.json()["order_status"] == "Cancelled"
