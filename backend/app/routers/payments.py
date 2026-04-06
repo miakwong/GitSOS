@@ -1,8 +1,9 @@
 # routers/payments.py
 from uuid import UUID
 
-from app.dependencies import get_current_user_full
-from app.schemas.constants import ROLE_ADMIN, ROLE_OWNER
+from app.dependencies import get_current_admin, get_current_user_full
+from app.repositories import payment_repository
+from app.schemas.constants import PAYMENT_STATUS_REFUNDED, ROLE_ADMIN, ROLE_OWNER
 from app.schemas.payment import PaymentCreate, PaymentOut
 from app.schemas.user import UserInDB
 from app.services import payment_service
@@ -73,3 +74,18 @@ def get_payment_by_order(
         raise HTTPException(status_code=404, detail="Payment not found for order")
     _check_payment_access(result, current_user)
     return result
+
+
+# Admin can views all refunded payments across the system
+@router.get(
+    "/admin/refunds",
+    response_model=list[PaymentOut],
+    summary="Admin: list all refunded payments",
+    description="Returns all payment records with the Refunded status. Admin only.",
+)
+def get_refunded_payments(
+    _current_admin: UUID = Depends(get_current_admin),
+) -> list[PaymentOut]:
+    all_payments = payment_repository.list_all()
+    refunded = [p for p in all_payments if p.status == PAYMENT_STATUS_REFUNDED]
+    return [PaymentOut.from_record(p) for p in refunded]

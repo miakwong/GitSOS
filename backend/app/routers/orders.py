@@ -2,7 +2,7 @@
 from uuid import UUID
 
 from app.dependencies import get_current_admin, get_current_owner
-from app.schemas.order import Order, OrderCreate, OrderStatusUpdate, OrderUpdate
+from app.schemas.order import Order, OrderCreate, OrderStatus, OrderStatusUpdate, OrderUpdate
 from app.services.notification_service import NotificationService
 from app.services.order_service import OrderService
 from fastapi import APIRouter, Depends, status
@@ -105,6 +105,35 @@ def admin_update_order_status(
     _current_admin: UUID = Depends(get_current_admin),
 ) -> Order:
     return order_service.admin_override_status(order_id, status_update.order_status)
+
+
+# Admin can views all cancelled orders across the system
+@router.get(
+    "/admin/cancelled",
+    response_model=list[Order],
+    summary="Admin: list all cancelled orders",
+    description="Returns all orders with Cancelled status. Admin only.",
+)
+def get_cancelled_orders(
+    _current_admin: UUID = Depends(get_current_admin),
+) -> list[Order]:
+    all_orders = order_service.get_all_orders()
+    return [o for o in all_orders if o.order_status == OrderStatus.CANCELLED]
+
+
+# Owner can views cancelled orders for their own restaurant
+@router.get(
+    "/owner/cancelled",
+    response_model=list[Order],
+    summary="Owner: list cancelled orders for their restaurant",
+    description="Returns all cancelled orders belonging to the owner's restaurant.",
+)
+def get_owner_cancelled_orders(
+    current_owner: tuple[UUID, int] = Depends(get_current_owner),
+) -> list[Order]:
+    _, rest_id = current_owner
+    restaurant_orders = order_service.get_orders_for_owner(rest_id)
+    return [o for o in restaurant_orders if o.order_status == OrderStatus.CANCELLED]
 
 
 @router.get(
