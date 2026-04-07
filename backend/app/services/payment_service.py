@@ -1,7 +1,7 @@
 import uuid
 
 from app.repositories import payment_repository
-from app.schemas.constants import PAYMENT_STATUS_REFUNDED, PAYMENT_REQUIRED_ORDER_STATUS, PAYMENT_STATUS_SUCCESS
+from app.schemas.constants import PAYMENT_REQUIRED_ORDER_STATUS, PAYMENT_STATUS_REFUNDED, PAYMENT_STATUS_SUCCESS
 from app.schemas.payment import PaymentCreate, PaymentOut, PaymentRecord
 from app.services.order_service import OrderService
 
@@ -74,3 +74,8 @@ def refund_payment(order_id: uuid.UUID) -> PaymentOut | None:
         raise PaymentError(f"Failed to process refund for order {order_id}")
 
     return PaymentOut.from_record(updated)
+
+
+def get_refunded_payments() -> list[PaymentOut]:
+    records = payment_repository.list_all()
+    return [PaymentOut.from_record(r) for r in records if r.status == PAYMENT_STATUS_REFUNDED]

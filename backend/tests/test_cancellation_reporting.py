@@ -45,7 +45,8 @@ def _make_payment(status: str) -> PaymentRecord:
 @pytest.fixture(autouse=True)
 def clear_overrides():
     yield
-    app.dependency_overrides.clear()
+    app.dependency_overrides.pop(get_current_admin, None)
+    app.dependency_overrides.pop(get_current_owner, None)
 
 
 @pytest.fixture
@@ -134,7 +135,7 @@ def test_admin_refunds_returns_only_refunded_payments():
         _make_payment(PAYMENT_STATUS_SUCCESS),
         _make_payment(PAYMENT_STATUS_REFUNDED),
     ]
-    with patch("app.routers.payments.payment_repository") as mock_repo:
+    with patch("app.services.payment_service.payment_repository") as mock_repo:
         mock_repo.list_all.return_value = payments
         response = client.get("/payments/admin/refunds")
     assert response.status_code == 200
@@ -147,7 +148,7 @@ def test_admin_refunds_returns_only_refunded_payments():
 def test_admin_refunds_empty_when_none_refunded():
     # If there are no refunded payments then the system should return empty list, not an error
     payments = [_make_payment(PAYMENT_STATUS_SUCCESS)]
-    with patch("app.routers.payments.payment_repository") as mock_repo:
+    with patch("app.services.payment_service.payment_repository") as mock_repo:
         mock_repo.list_all.return_value = payments
         response = client.get("/payments/admin/refunds")
     assert response.status_code == 200
