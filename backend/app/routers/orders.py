@@ -4,9 +4,11 @@ from uuid import UUID
 from app.dependencies import get_current_admin, get_current_owner
 from app.schemas.order import Order, OrderCreate, OrderStatus, OrderStatusUpdate, OrderUpdate
 from app.services import payment_service
+from app.dependencies import get_current_admin, get_current_owner, get_current_user
+from app.schemas.user import UserInDB
 from app.services.notification_service import NotificationService
 from app.services.order_service import OrderService
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, HTTPException, status
 
 router = APIRouter(prefix="/orders", tags=["orders"])
 
@@ -23,7 +25,15 @@ _notif_service = NotificationService()
     summary="Create a new system order",
     description="Creates a new order with validated customer, restaurant, and food item associations.",
 )
-def create_order(order_data: OrderCreate) -> Order:
+def create_order(
+    order_data: OrderCreate,
+    current_user: UserInDB = Depends(get_current_user),
+) -> Order:
+    if current_user.role != "admin" and order_data.customer_id != str(current_user.id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only create orders for yourself",
+        )
     order = order_service.create_order(order_data)
     _notif_service.notify_order_created(order)
     return order
@@ -34,9 +44,16 @@ def create_order(order_data: OrderCreate) -> Order:
     "/",
     response_model=list[Order],
     summary="Get all system orders",
-    description="Retrieves all system-created orders.",
+    description="Retrieves all system-created orders. Admin only.",
 )
-def get_all_orders() -> list[Order]:
+def get_all_orders(
+    current_user: UserInDB = Depends(get_current_user),
+) -> list[Order]:
+    if current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access restricted to administrators",
+        )
     return order_service.get_all_orders()
 
 
@@ -47,8 +64,25 @@ def get_all_orders() -> list[Order]:
     summary="Get a system order by ID",
     description="Retrieves a specific system-created order by its UUID.",
 )
-def get_order(order_id: str) -> Order:
-    return order_service.get_order(order_id)
+def get_order(
+    order_id: str,
+    current_user: UserInDB = Depends(get_current_user),
+) -> Order:
+    order = order_service.get_order(order_id)
+    if current_user.role == "admin":
+        return order
+    if current_user.role == "customer" and order.customer_id != str(current_user.id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Access denied"
+        )
+    if (
+        current_user.role == "owner"
+        and order.restaurant_id != current_user.restaurant_id
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Access denied"
+        )
+    return order
 
 
 # Update a system order (customer can only update their own orders in "Placed" status)
@@ -58,30 +92,26 @@ def get_order(order_id: str) -> Order:
     summary="Update a system order",
     description="Updates a system order. Only the order owner can update, and only if order is in 'Placed' status.",
 )
-def update_order(order_id: str, customer_id: str, update_data: OrderUpdate) -> Order:
-    return order_service.update_order(order_id, customer_id, update_data)
+def update_order(
+    order_id: str,
+    update_data: OrderUpdate,
+    current_user: UserInDB = Depends(get_current_user),
+) -> Order:
+    return order_service.update_order(order_id, str(current_user.id), update_data)
 
 
 # Cancel a system order (customer can only cancel their own orders in "Placed" or "Paid" status)
-# Feat11-B1: if the order was already Paid, automatically trigger a refund
 @router.delete(
     "/{order_id}/cancel",
     response_model=Order,
     summary="Cancel a system order",
-    description="Cancels a system order. Only the order owner can cancel, and only if order is in 'Placed' or 'Paid' status. If the order was already paid, a refund is automatically triggered.",
+    description="Cancels a system order. Only the order owner can cancel, and only if order is in 'Placed' or 'Paid' status.",
 )
-def cancel_order(order_id: str, customer_id: str) -> Order:
-    # Tell the system to check the order's current status before cancelling
-    # so we can know whether to trigger a refund after
-    existing_order = order_service.get_order(order_id)
-    was_paid = existing_order.order_status == OrderStatus.PAID
-
-    order = order_service.cancel_order(order_id, customer_id)
-
-    # Trigger a simulated refund if the order had already been paid or not
-    if was_paid:
-        payment_service.refund_payment(existing_order.order_id)
-
+def cancel_order(
+    order_id: str,
+    current_user: UserInDB = Depends(get_current_user),
+) -> Order:
+    order = order_service.cancel_order(order_id, str(current_user.id))
     _notif_service.notify_order_status_changed(order)
     return order
 
