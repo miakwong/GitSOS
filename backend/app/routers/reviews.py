@@ -1,4 +1,6 @@
 # Feat9 — Review endpoints
+from uuid import UUID
+
 from app.dependencies import get_current_user
 from app.schemas.constants import ROLE_CUSTOMER
 from app.schemas.review import RestaurantRatingSummary, ReviewCreate, ReviewOut
@@ -32,3 +34,16 @@ def get_restaurant_ratings(
     current_user: UserInDB = Depends(get_current_user),
 ) -> RestaurantRatingSummary:
     return review_service.get_restaurant_ratings(restaurant_id)
+
+
+@router.delete("/{review_id}", status_code=204)
+def delete_review(
+    review_id: UUID,
+    current_user: UserInDB = Depends(get_current_user),
+) -> None:
+    try:
+        review_service.delete_review(review_id, str(current_user.id), current_user.role)
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))

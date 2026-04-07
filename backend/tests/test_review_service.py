@@ -95,3 +95,52 @@ def test_get_restaurant_ratings_correct_restaurant_id(mock_repo):
     mock_repo.get_by_restaurant_id.return_value = []
     result = service.get_restaurant_ratings(RESTAURANT_ID)
     assert result.restaurant_id == RESTAURANT_ID
+
+
+# -------------------------
+# delete_review
+# -------------------------
+
+REVIEW_ID = uuid.uuid4()
+OTHER_CUSTOMER_ID = uuid.uuid4()
+
+
+def _make_review_record() -> ReviewRecord:
+    return ReviewRecord(
+        review_id=REVIEW_ID,
+        order_id=ORDER_ID,
+        customer_id=CUSTOMER_ID,
+        restaurant_id=RESTAURANT_ID,
+        rating=4,
+        tags=[],
+    )
+
+
+@pytest.fixture
+def mock_delete_repo():
+    with patch("app.services.review_service.review_repository") as mock:
+        mock.get_by_id.return_value = _make_review_record()
+        mock.delete.return_value = True
+        yield mock
+
+
+def test_delete_review_author_succeeds(mock_delete_repo):
+    service.delete_review(REVIEW_ID, str(CUSTOMER_ID), "customer")
+    mock_delete_repo.delete.assert_called_once_with(REVIEW_ID)
+
+
+def test_delete_review_admin_succeeds(mock_delete_repo):
+    service.delete_review(REVIEW_ID, str(OTHER_CUSTOMER_ID), "admin")
+    mock_delete_repo.delete.assert_called_once_with(REVIEW_ID)
+
+
+def test_delete_review_other_customer_raises(mock_delete_repo):
+    with pytest.raises(PermissionError):
+        service.delete_review(REVIEW_ID, str(OTHER_CUSTOMER_ID), "customer")
+    mock_delete_repo.delete.assert_not_called()
+
+
+def test_delete_review_not_found_raises(mock_delete_repo):
+    mock_delete_repo.get_by_id.return_value = None
+    with pytest.raises(service.ReviewError):
+        service.delete_review(REVIEW_ID, str(CUSTOMER_ID), "customer")

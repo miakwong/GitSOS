@@ -187,3 +187,48 @@ def test_get_restaurant_ratings_requires_auth():
     app.dependency_overrides.clear()
     response = client.get(f"/reviews/restaurant/{RESTAURANT_ID}")
     assert response.status_code == 401
+
+
+# -------------------------
+# DELETE /reviews/{review_id}
+# -------------------------
+
+MOCK_ADMIN = UserInDB(
+    id=uuid.uuid4(),
+    email="admin@test.com",
+    role="admin",
+    password_hash="hashed",
+)
+
+
+def test_delete_review_success(mock_service):
+    mock_service.delete_review.return_value = None
+    response = client.delete(f"/reviews/{REVIEW_ID}")
+    assert response.status_code == 204
+
+
+def test_delete_review_not_found(mock_service):
+    mock_service.delete_review.side_effect = ValueError("Review not found.")
+    response = client.delete(f"/reviews/{REVIEW_ID}")
+    assert response.status_code == 404
+
+
+def test_delete_review_forbidden(mock_service):
+    mock_service.delete_review.side_effect = PermissionError(
+        "You can only delete your own reviews."
+    )
+    response = client.delete(f"/reviews/{REVIEW_ID}")
+    assert response.status_code == 403
+
+
+def test_admin_can_delete_any_review(mock_service):
+    app.dependency_overrides[get_current_user] = lambda: MOCK_ADMIN
+    mock_service.delete_review.return_value = None
+    response = client.delete(f"/reviews/{REVIEW_ID}")
+    assert response.status_code == 204
+
+
+def test_delete_review_requires_auth():
+    app.dependency_overrides.clear()
+    response = client.delete(f"/reviews/{REVIEW_ID}")
+    assert response.status_code == 401

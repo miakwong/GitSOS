@@ -56,6 +56,18 @@ def submit_review(payload: ReviewCreate, customer_id: str) -> ReviewOut:
     return ReviewOut.from_record(saved)
 
 
+def delete_review(review_id: uuid.UUID, requester_id: str, requester_role: str) -> None:
+    record = review_repository.get_by_id(review_id)
+    if record is None:
+        raise ReviewError(f"Review '{review_id}' not found.")
+
+    # Only the author or an admin may delete
+    if requester_role != "admin" and str(record.customer_id) != requester_id:
+        raise PermissionError("You can only delete your own reviews.")
+
+    review_repository.delete(review_id)
+
+
 def get_restaurant_ratings(restaurant_id: int) -> RestaurantRatingSummary:
     records = review_repository.get_by_restaurant_id(restaurant_id)
     reviews = [ReviewOut.from_record(r) for r in records]
