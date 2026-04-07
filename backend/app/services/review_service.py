@@ -2,26 +2,21 @@
 import uuid
 
 from app.repositories import review_repository
-from app.repositories.order_repository import OrderRepository
 from app.schemas.constants import REVIEW_REQUIRED_ORDER_STATUS
-from app.schemas.review import (
-    RestaurantRatingSummary,
-    ReviewCreate,
-    ReviewOut,
-    ReviewRecord,
-)
+from app.schemas.review import ReviewCreate, ReviewOut, ReviewRecord
+from app.services.order_service import OrderService
 
 ReviewError = ValueError
 
 
-_order_repo = OrderRepository()
+_order_service = OrderService()
 
 
 def submit_review(payload: ReviewCreate, customer_id: str) -> ReviewOut:
     order_id = payload.order_id
 
     # Only system-created orders can be reviewed (not Kaggle historical data)
-    order = _order_repo.get_order_by_id(str(order_id))
+    order = _order_service.order_repo.get_order_by_id(str(order_id))
     if order is None:
         raise ReviewError(
             f"Order '{order_id}' not found or is not a system-created order. "
