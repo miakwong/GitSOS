@@ -311,11 +311,12 @@ class SearchService:
             filters.max_order_value,
         )
 
-        rows = self.repo.load_all_rows()
+        kaggle_rows = self.repo.load_all_rows()
+        system_rows = self.repo.load_system_orders()
 
-        # Create a simplified "order view" from rows (adjust column names to match your CSV)
+        # Build a unified order view from both Kaggle CSV and system orders.json
         orders: List[Dict[str, Any]] = []
-        for r in rows:
+        for r in kaggle_rows:
             orders.append(
                 {
                     "order_id": str(
@@ -336,6 +337,16 @@ class SearchService:
                     "order_value": _to_float(
                         r.get("order_value") or r.get("OrderValue")
                     ),
+                }
+            )
+        for r in system_rows:
+            orders.append(
+                {
+                    "order_id": str(r.get("order_id") or ""),
+                    "customer_id": str(r.get("customer_id") or ""),
+                    "restaurant_id": str(r.get("restaurant_id") or ""),
+                    "order_status": r.get("order_status"),
+                    "order_value": _to_float(r.get("order_value")),
                 }
             )
 

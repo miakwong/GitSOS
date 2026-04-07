@@ -1,7 +1,7 @@
 import uuid
 
 from app.repositories import payment_repository
-from app.schemas.constants import PAYMENT_STATUS_SUCCESS
+from app.schemas.constants import PAYMENT_STATUS_REFUNDED, PAYMENT_REQUIRED_ORDER_STATUS, PAYMENT_STATUS_SUCCESS
 from app.schemas.payment import PaymentCreate, PaymentOut, PaymentRecord
 from app.services.order_service import OrderService
 
@@ -20,6 +20,14 @@ def process_payment(payload: PaymentCreate) -> PaymentOut:
 
     # [FEAT4] Get order details from order service
     order = _order_service.get_order(str(order_id))
+
+    # Order must be in Placed status before payment can be initiated
+    if order.order_status.value != PAYMENT_REQUIRED_ORDER_STATUS:
+        raise PaymentError(
+            f"Payment can only be initiated for orders in '{PAYMENT_REQUIRED_ORDER_STATUS}' status. "
+            f"Current status: '{order.order_status.value}'"
+        )
+
     amount = order.order_value
     customer_id = uuid.UUID(order.customer_id)
 
@@ -46,3 +54,23 @@ def get_payment_by_order(order_id: uuid.UUID) -> PaymentOut | None:
     if record is None:
         return None
     return PaymentOut.from_record(record)
+
+
+def refund_payment(order_id: uuid.UUID) -> PaymentOut | None:
+    existing = payment_repository.get_by_order_id(order_id)
+    if existing is None:
+        return None
+
+    if existing.status == PAYMENT_STATUS_REFUNDED:
+        raise PaymentError(f"Payment for order {order_id} has already been refunded")
+
+    if existing.status != PAYMENT_STATUS_SUCCESS:
+        raise PaymentError(
+            f"Cannot refund a payment with status '{existing.status}'. Only Success payments can be refunded."
+        )
+
+    updated = payment_repository.update_status(order_id, PAYMENT_STATUS_REFUNDED)
+    if updated is None:
+        raise PaymentError(f"Failed to process refund for order {order_id}")
+
+    return PaymentOut.from_record(updated)

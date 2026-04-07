@@ -12,6 +12,9 @@ from fastapi import HTTPException
 
 
 class FakeSearchRepository(SearchRepository):
+    def load_system_orders(self):
+        return []
+
     def load_all_rows(self):
         return [
             {
