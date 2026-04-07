@@ -31,3 +31,13 @@ VALID_NOTIFICATION_TYPES = [
     NOTIF_ORDER_STATUS_CHANGED,
     NOTIF_PAYMENT_STATUS_CHANGED,
 ]
+
+# Review tags — Feat9-FR1
+REVIEW_TAGS_FOOD = ["Delicious", "Just okay", "Disappointing"]
+REVIEW_TAGS_DELIVERY = ["Fast delivery", "On time", "Late delivery"]
+REVIEW_TAGS_VALUE = ["Great value", "Overpriced"]
+
+VALID_REVIEW_TAGS = REVIEW_TAGS_FOOD + REVIEW_TAGS_DELIVERY + REVIEW_TAGS_VALUE
+
+# Order must be Delivered before a review can be submitted — Feat9-FR2
+REVIEW_REQUIRED_ORDER_STATUS = "Delivered"
