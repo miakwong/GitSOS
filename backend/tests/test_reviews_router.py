@@ -4,7 +4,7 @@ from unittest.mock import patch
 import pytest
 from app.dependencies import get_current_user
 from app.main import app
-from app.schemas.review import ReviewOut
+from app.schemas.review import RestaurantRatingSummary, ReviewOut
 from app.schemas.user import UserInDB
 from fastapi.testclient import TestClient
 
@@ -138,3 +138,52 @@ def test_owner_cannot_submit_review():
     )
     assert response.status_code == 403
     assert "customers" in response.json()["detail"]
+
+
+# -------------------------
+# GET /reviews/restaurant/{id}
+# -------------------------
+
+MOCK_SUMMARY = RestaurantRatingSummary(
+    restaurant_id=RESTAURANT_ID,
+    review_count=2,
+    average_rating=4.5,
+    tag_counts={"Delicious": 1, "Fast delivery": 1},
+    reviews=[MOCK_REVIEW_OUT],
+)
+
+EMPTY_SUMMARY = RestaurantRatingSummary(
+    restaurant_id=99,
+    review_count=0,
+    average_rating=0.0,
+    tag_counts={},
+    reviews=[],
+)
+
+
+def test_get_restaurant_ratings_success(mock_service):
+    mock_service.get_restaurant_ratings.return_value = MOCK_SUMMARY
+    response = client.get(f"/reviews/restaurant/{RESTAURANT_ID}")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["restaurant_id"] == RESTAURANT_ID
+    assert data["review_count"] == 2
+    assert data["average_rating"] == 4.5
+    assert data["tag_counts"] == {"Delicious": 1, "Fast delivery": 1}
+    assert len(data["reviews"]) == 1
+
+
+def test_get_restaurant_ratings_empty(mock_service):
+    mock_service.get_restaurant_ratings.return_value = EMPTY_SUMMARY
+    response = client.get("/reviews/restaurant/99")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["review_count"] == 0
+    assert data["average_rating"] == 0.0
+    assert data["reviews"] == []
+
+
+def test_get_restaurant_ratings_requires_auth():
+    app.dependency_overrides.clear()
+    response = client.get(f"/reviews/restaurant/{RESTAURANT_ID}")
+    assert response.status_code == 401

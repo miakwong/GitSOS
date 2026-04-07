@@ -38,6 +38,14 @@ class ReviewRecord(BaseModel):
     )
 
 
+class RestaurantRatingSummary(BaseModel):
+    restaurant_id: int
+    review_count: int
+    average_rating: float
+    tag_counts: dict
+    reviews: List["ReviewOut"]
+
+
 class ReviewOut(BaseModel):
     review_id: str
     order_id: str

@@ -1,10 +1,15 @@
-# Feat9 — Business logic for review submission
+# Feat9 — Business logic for review submission and retrieval
 import uuid
 
 from app.repositories import review_repository
 from app.repositories.order_repository import OrderRepository
 from app.schemas.constants import REVIEW_REQUIRED_ORDER_STATUS
-from app.schemas.review import ReviewCreate, ReviewOut, ReviewRecord
+from app.schemas.review import (
+    RestaurantRatingSummary,
+    ReviewCreate,
+    ReviewOut,
+    ReviewRecord,
+)
 
 ReviewError = ValueError
 
@@ -49,3 +54,32 @@ def submit_review(payload: ReviewCreate, customer_id: str) -> ReviewOut:
     )
     saved = review_repository.create(record)
     return ReviewOut.from_record(saved)
+
+
+def get_restaurant_ratings(restaurant_id: int) -> RestaurantRatingSummary:
+    records = review_repository.get_by_restaurant_id(restaurant_id)
+    reviews = [ReviewOut.from_record(r) for r in records]
+
+    if not reviews:
+        return RestaurantRatingSummary(
+            restaurant_id=restaurant_id,
+            review_count=0,
+            average_rating=0.0,
+            tag_counts={},
+            reviews=[],
+        )
+
+    avg = round(sum(r.rating for r in reviews) / len(reviews), 2)
+
+    tag_counts: dict = {}
+    for r in reviews:
+        for tag in r.tags:
+            tag_counts[tag] = tag_counts.get(tag, 0) + 1
+
+    return RestaurantRatingSummary(
+        restaurant_id=restaurant_id,
+        review_count=len(reviews),
+        average_rating=avg,
+        tag_counts=tag_counts,
+        reviews=reviews,
+    )
