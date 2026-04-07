@@ -1,21 +1,32 @@
 # Tests for order creation functionality
-import pytest
 import json
 import tempfile
 from pathlib import Path
-from fastapi.testclient import TestClient
+from uuid import UUID
 
+import pytest
+from app.dependencies import get_current_user
 from app.main import app
+from app.repositories.order_repository import KaggleOrderRepository, OrderRepository
 from app.schemas.order import (
-    OrderCreate, Order, OrderStatus,
-    DeliveryMethod, TrafficCondition, WeatherCondition
+    DeliveryMethod,
+    OrderCreate,
+    OrderStatus,
+    TrafficCondition,
+    WeatherCondition,
 )
-from app.repositories.order_repository import OrderRepository, KaggleOrderRepository
+from app.schemas.user import UserInDB
 from app.services.order_service import OrderService
+from fastapi.testclient import TestClient
 
 client = TestClient(app)
 
-
+MOCK_ADMIN = UserInDB(
+    id=UUID("00000000-0000-0000-0000-000000000001"),
+    email="admin@test.com",
+    role="admin",
+    password_hash="x",
+)
 
 
 # Create a temporary JSON file for system orders
@@ -43,7 +54,6 @@ def order_repo(temp_orders_file):
     return OrderRepository(orders_path=temp_orders_file)
 
 
-
 @pytest.fixture
 def kaggle_repo(temp_kaggle_csv):
     return KaggleOrderRepository(csv_path=temp_kaggle_csv)
@@ -53,8 +63,6 @@ def kaggle_repo(temp_kaggle_csv):
 @pytest.fixture
 def order_service(order_repo, kaggle_repo):
     return OrderService(order_repo=order_repo, kaggle_repo=kaggle_repo)
-
-
 
 
 # Tests for OrderCreate schema validation
@@ -134,7 +142,6 @@ class TestOrderSchemaValidation:
                 delivery_method=DeliveryMethod.BIKE,
             )
 
-  
     def test_whitespace_food_item_rejected(self):
         with pytest.raises(ValueError):
             OrderCreate(
@@ -183,8 +190,6 @@ class TestOrderSchemaValidation:
                 delivery_method=DeliveryMethod.BIKE,
                 weather_condition="Stormy",
             )
-
-
 
 
 # Tests for Kaggle repository (read-only)
@@ -249,7 +254,6 @@ class TestOrderRepository:
         assert len(orders) == 2
 
 
-
 # Tests for order service business logic
 class TestOrderService:
 
@@ -281,6 +285,7 @@ class TestOrderService:
             delivery_method=DeliveryMethod.BIKE,
         )
         from fastapi import HTTPException
+
         with pytest.raises(HTTPException) as exc_info:
             order_service.create_order(order_data)
         assert exc_info.value.status_code == 400
@@ -297,6 +302,7 @@ class TestOrderService:
             delivery_method=DeliveryMethod.BIKE,
         )
         from fastapi import HTTPException
+
         with pytest.raises(HTTPException) as exc_info:
             order_service.create_order(order_data)
         assert exc_info.value.status_code == 400
@@ -313,6 +319,7 @@ class TestOrderService:
             delivery_method=DeliveryMethod.BIKE,
         )
         from fastapi import HTTPException
+
         with pytest.raises(HTTPException) as exc_info:
             order_service.create_order(order_data)
         assert exc_info.value.status_code == 400
@@ -347,7 +354,6 @@ class TestOrderService:
         assert order.weather_condition == WeatherCondition.RAINY
 
 
-
 # tests for enum values
 class TestEnumValues:
 
@@ -380,8 +386,15 @@ class TestEnumValues:
 
 # --- Integration Tests ---
 
+
 # Integration tests for order API endpoints
 class TestOrderAPIIntegration:
+
+    def setup_method(self):
+        app.dependency_overrides[get_current_user] = lambda: MOCK_ADMIN
+
+    def teardown_method(self):
+        app.dependency_overrides.pop(get_current_user, None)
 
     # Test POST /orders with missing required field returns 422
     def test_create_order_endpoint_missing_required_field(self):

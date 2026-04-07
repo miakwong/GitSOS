@@ -1,7 +1,7 @@
 import uuid
 
 from app.repositories import payment_repository
-from app.schemas.constants import PAYMENT_STATUS_REFUNDED, PAYMENT_STATUS_SUCCESS
+from app.schemas.constants import PAYMENT_REQUIRED_ORDER_STATUS, PAYMENT_STATUS_SUCCESS
 from app.schemas.payment import PaymentCreate, PaymentOut, PaymentRecord
 from app.services.order_service import OrderService
 
@@ -20,6 +20,14 @@ def process_payment(payload: PaymentCreate) -> PaymentOut:
 
     # [FEAT4] Get order details from order service
     order = _order_service.get_order(str(order_id))
+
+    # Order must be in Placed status before payment can be initiated
+    if order.order_status.value != PAYMENT_REQUIRED_ORDER_STATUS:
+        raise PaymentError(
+            f"Payment can only be initiated for orders in '{PAYMENT_REQUIRED_ORDER_STATUS}' status. "
+            f"Current status: '{order.order_status.value}'"
+        )
+
     amount = order.order_value
     customer_id = uuid.UUID(order.customer_id)
 

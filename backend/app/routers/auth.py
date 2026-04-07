@@ -10,7 +10,13 @@ from app.dependencies import (
     require_role,
 )
 from app.repositories.user_repository import UserRepository
-from app.schemas.user import TokenResponse, UserCreate, UserLogin, UserProfile, UserPublic
+from app.schemas.user import (
+    TokenResponse,
+    UserCreate,
+    UserLogin,
+    UserProfile,
+    UserPublic,
+)
 from app.services.auth_service import AuthService
 from app.services.order_service import OrderService
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -25,13 +31,21 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 def register(payload: UserCreate, auth: AuthService = Depends(get_auth_service)):
     try:
         user = auth.register_user(payload)
-        return UserPublic(id=user.id, email=user.email, role=user.role)
+        return UserPublic(
+            id=user.id,
+            email=user.email,
+            role=user.role,
+            restaurant_id=user.restaurant_id,
+        )
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e))
 
 
 @router.post("/login", response_model=TokenResponse)
-def login(form: OAuth2PasswordRequestForm = Depends(), auth: AuthService = Depends(get_auth_service)):
+def login(
+    form: OAuth2PasswordRequestForm = Depends(),
+    auth: AuthService = Depends(get_auth_service),
+):
     try:
         payload = UserLogin(email=form.username, password=form.password)
         token = auth.login_user(payload)
@@ -55,6 +69,7 @@ def me(current_user=Depends(get_current_user)):
         id=current_user.id,
         email=current_user.email,
         role=current_user.role,
+        restaurant_id=current_user.restaurant_id,
     )
 
 
@@ -101,7 +116,9 @@ def get_user_profile(
     if current_user.id != user_id:
         target = user_repo.get_user_by_id(user_id)
         if not target:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+            )
     else:
         target = current_user
     orders = None
@@ -118,5 +135,6 @@ def get_user_profile(
 )
 def admin_list_users(user_repo: UserRepository = Depends(get_user_repo)):
     return [
-        UserPublic(id=u.id, email=u.email, role=u.role) for u in user_repo.list_users()
+        UserPublic(id=u.id, email=u.email, role=u.role, restaurant_id=u.restaurant_id)
+        for u in user_repo.list_users()
     ]
