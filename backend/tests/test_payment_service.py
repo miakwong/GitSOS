@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 import app.services.payment_service as service
 import pytest
-from app.schemas.constants import PAYMENT_STATUS_REFUNDED, PAYMENT_STATUS_SUCCESS
+from app.schemas.constants import PAYMENT_STATUS_FAILED, PAYMENT_STATUS_PENDING, PAYMENT_STATUS_REFUNDED, PAYMENT_STATUS_SUCCESS
 from app.schemas.order import (
     DeliveryMethod,
     Order,
@@ -188,5 +188,17 @@ def test_refund_payment_returns_payment_out(mock_repo):
 def test_refund_payment_raises_if_update_fails(mock_repo):
     mock_repo.get_by_order_id.return_value = _make_record()
     mock_repo.update_status.return_value = None
+    with pytest.raises(service.PaymentError):
+        service.refund_payment(ORDER_ID)
+
+
+def test_refund_payment_raises_if_status_is_pending(mock_repo):
+    mock_repo.get_by_order_id.return_value = _make_record(status=PAYMENT_STATUS_PENDING)
+    with pytest.raises(service.PaymentError):
+        service.refund_payment(ORDER_ID)
+
+
+def test_refund_payment_raises_if_status_is_failed(mock_repo):
+    mock_repo.get_by_order_id.return_value = _make_record(status=PAYMENT_STATUS_FAILED)
     with pytest.raises(service.PaymentError):
         service.refund_payment(ORDER_ID)

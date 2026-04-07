@@ -64,7 +64,11 @@ def refund_payment(order_id: uuid.UUID) -> PaymentOut | None:
     if existing.status == PAYMENT_STATUS_REFUNDED:
         raise PaymentError(f"Payment for order {order_id} has already been refunded")
 
-    # Update the payment status to Refunded for an order
+    if existing.status != PAYMENT_STATUS_SUCCESS:
+        raise PaymentError(
+            f"Cannot refund a payment with status '{existing.status}'. Only Success payments can be refunded."
+        )
+
     updated = payment_repository.update_status(order_id, PAYMENT_STATUS_REFUNDED)
     if updated is None:
         raise PaymentError(f"Failed to process refund for order {order_id}")
