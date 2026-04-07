@@ -64,5 +64,21 @@ def get_by_restaurant_id(restaurant_id: int) -> List[ReviewRecord]:
     return [_dict_to_record(d) for d in _load() if d["restaurant_id"] == restaurant_id]
 
 
+def get_by_id(review_id: UUID) -> Optional[ReviewRecord]:
+    for data in _load():
+        if data["review_id"] == str(review_id):
+            return _dict_to_record(data)
+    return None
+
+
+def delete(review_id: UUID) -> bool:
+    records = _load()
+    filtered = [d for d in records if d["review_id"] != str(review_id)]
+    if len(filtered) == len(records):
+        return False
+    _save(filtered)
+    return True
+
+
 def list_all() -> List[ReviewRecord]:
     return [_dict_to_record(d) for d in _load()]
