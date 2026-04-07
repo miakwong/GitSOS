@@ -1,11 +1,10 @@
 # Orders router for API endpoints
 from uuid import UUID
 
-from app.dependencies import get_current_admin, get_current_owner
-from app.schemas.order import Order, OrderCreate, OrderStatus, OrderStatusUpdate, OrderUpdate
-from app.services import payment_service
 from app.dependencies import get_current_admin, get_current_owner, get_current_user
+from app.schemas.order import Order, OrderCreate, OrderStatus, OrderStatusUpdate, OrderUpdate
 from app.schemas.user import UserInDB
+from app.services import payment_service
 from app.services.notification_service import NotificationService
 from app.services.order_service import OrderService
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -111,7 +110,20 @@ def cancel_order(
     order_id: str,
     current_user: UserInDB = Depends(get_current_user),
 ) -> Order:
+    # Check order status before cancelling so we know whether to trigger a refund
+    existing_order = order_service.get_order(order_id)
+    was_paid = existing_order.order_status == OrderStatus.PAID
+
     order = order_service.cancel_order(order_id, str(current_user.id))
+
+    # If the refund fails for any reason, it still return the cancelled order
+    # so the system stays consistent, which the order is cancelled regardless
+    if was_paid:
+        try:
+            payment_service.refund_payment(existing_order.order_id)
+        except ValueError:
+            pass
+
     _notif_service.notify_order_status_changed(order)
     return order
 
