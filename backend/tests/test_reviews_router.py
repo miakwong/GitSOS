@@ -45,7 +45,7 @@ client = TestClient(app)
 def override_auth():
     app.dependency_overrides[get_current_user] = lambda: MOCK_CUSTOMER
     yield
-    app.dependency_overrides.clear()
+    app.dependency_overrides.pop(get_current_user, None)
 
 
 @pytest.fixture
