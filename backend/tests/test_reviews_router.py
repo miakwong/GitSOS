@@ -184,6 +184,6 @@ def test_get_restaurant_ratings_empty(mock_service):
 
 
 def test_get_restaurant_ratings_requires_auth():
-    app.dependency_overrides.clear()
+    app.dependency_overrides.pop(get_current_user, None)
     response = client.get(f"/reviews/restaurant/{RESTAURANT_ID}")
     assert response.status_code == 401
