@@ -1,0 +1,51 @@
+# Feat9 — Business logic for review submission
+import uuid
+
+from app.repositories import review_repository
+from app.repositories.order_repository import OrderRepository
+from app.schemas.constants import REVIEW_REQUIRED_ORDER_STATUS
+from app.schemas.review import ReviewCreate, ReviewOut, ReviewRecord
+
+ReviewError = ValueError
+
+
+_order_repo = OrderRepository()
+
+
+def submit_review(payload: ReviewCreate, customer_id: str) -> ReviewOut:
+    order_id = payload.order_id
+
+    # Only system-created orders can be reviewed (not Kaggle historical data)
+    order = _order_repo.get_order_by_id(str(order_id))
+    if order is None:
+        raise ReviewError(
+            f"Order '{order_id}' not found or is not a system-created order. "
+            "Only orders placed through this platform can be reviewed."
+        )
+
+    # Order must belong to the requesting customer
+    if order.customer_id != customer_id:
+        raise PermissionError("You can only review your own orders.")
+
+    # Order must be in Delivered status
+    if order.order_status.value != REVIEW_REQUIRED_ORDER_STATUS:
+        raise ReviewError(
+            f"Reviews can only be submitted for delivered orders. "
+            f"Current status: '{order.order_status.value}'"
+        )
+
+    # No duplicate review per order
+    existing = review_repository.get_by_order_id(order_id)
+    if existing is not None:
+        raise ReviewError(f"A review already exists for order '{order_id}'.")
+
+    record = ReviewRecord(
+        review_id=uuid.uuid4(),
+        order_id=order_id,
+        customer_id=uuid.UUID(customer_id),
+        restaurant_id=order.restaurant_id,
+        rating=payload.rating,
+        tags=payload.tags,
+    )
+    saved = review_repository.create(record)
+    return ReviewOut.from_record(saved)
