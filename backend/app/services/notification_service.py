@@ -52,7 +52,7 @@ class NotificationService:
             customer_id,
             order.order_id,
             NOTIF_ORDER_CREATED,
-            f"Your order {order.order_id} has been placed.",
+            f"Your order for {order.food_item} has been placed.",
         )
         owner_id = self._find_owner_for_restaurant(order.restaurant_id)
         if owner_id:
@@ -60,7 +60,7 @@ class NotificationService:
                 owner_id,
                 order.order_id,
                 NOTIF_ORDER_CREATED,
-                f"New order {order.order_id} received at your restaurant.",
+                f"New order for {order.food_item} received at your restaurant.",
             )
 
     def notify_order_status_changed(self, order: Order) -> None:
@@ -71,7 +71,7 @@ class NotificationService:
             customer_id,
             order.order_id,
             NOTIF_ORDER_STATUS_CHANGED,
-            f"Your order {order.order_id} status changed to {order.order_status.value}.",
+            f"Your {order.food_item} order is now {order.order_status.value}.",
         )
         owner_id = self._find_owner_for_restaurant(order.restaurant_id)
         if owner_id:
@@ -79,7 +79,7 @@ class NotificationService:
                 owner_id,
                 order.order_id,
                 NOTIF_ORDER_STATUS_CHANGED,
-                f"Order {order.order_id} status changed to {order.order_status.value}.",
+                f"{order.food_item} order is now {order.order_status.value}.",
             )
 
     def notify_payment_status(self, payment: PaymentRecord) -> None:
@@ -87,7 +87,7 @@ class NotificationService:
             payment.customer_id,
             payment.order_id,
             NOTIF_PAYMENT_STATUS_CHANGED,
-            f"Payment for order {payment.order_id} is {payment.status}.",
+            f"Your payment of ${payment.amount:.2f} is {payment.status}.",
         )
 
     def notify_payment_out(self, payment: PaymentOut) -> None:
@@ -95,5 +95,5 @@ class NotificationService:
             uuid.UUID(payment.customer_id),
             uuid.UUID(payment.order_id),
             NOTIF_PAYMENT_STATUS_CHANGED,
-            f"Payment for order {payment.order_id} is {payment.status}.",
+            f"Your payment of ${payment.amount:.2f} is {payment.status}.",
         )

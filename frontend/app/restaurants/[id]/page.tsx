@@ -1,0 +1,130 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import api from "@/lib/api";
+import { isLoggedIn, getUser } from "@/lib/auth";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+
+interface MenuItem {
+  restaurant_id: string;
+  item_name: string;
+  category: string;
+  price: number;
+}
+
+export default function RestaurantDetailPage() {
+  const { id } = useParams<{ id: string }>();
+  const router = useRouter();
+  const [items, setItems] = useState<MenuItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [ordering, setOrdering] = useState<string | null>(null);
+  const [success, setSuccess] = useState("");
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    api
+      .get("/search/menu-items", { params: { restaurant_id: id, page_size: 100 } })
+      .then(({ data }) => setItems(data.data || []))
+      .finally(() => setLoading(false));
+  }, [id]);
+
+  async function placeOrder(item: MenuItem) {
+    if (!isLoggedIn()) {
+      router.push(`/login?redirect=/restaurants/${id}`);
+      return;
+    }
+    const user = getUser();
+    setOrdering(item.item_name);
+    setSuccess("");
+    setError("");
+    try {
+      await api.post("/orders/", {
+        customer_id: user.id,
+        restaurant_id: parseInt(id),
+        food_item: item.item_name,
+        order_value: item.price,
+        delivery_distance: 3.0,
+        delivery_method: "Bike",
+        traffic_condition: "Low",
+        weather_condition: "Sunny",
+      });
+      setSuccess(`Order placed for ${item.item_name}!`);
+      window.dispatchEvent(new Event("notifications-refresh"));
+    } catch (err: unknown) {
+      const msg =
+        (err as { response?: { data?: { detail?: string } } })?.response?.data
+          ?.detail;
+      setError(typeof msg === "string" ? msg : "Failed to place order.");
+    } finally {
+      setOrdering(null);
+    }
+  }
+
+  return (
+    <div className="max-w-4xl mx-auto px-4 py-8">
+      <button
+        onClick={() => router.back()}
+        className="text-sm text-gray-500 hover:text-gray-800 mb-4 flex items-center gap-1"
+      >
+        ← Back
+      </button>
+
+      <h1 className="text-2xl font-bold mb-2">Restaurant #{id}</h1>
+      <p className="text-gray-500 text-sm mb-6">Select an item to place an order</p>
+
+      {success && (
+        <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded text-green-700 text-sm">
+          {success}{" "}
+          <button
+            className="underline ml-1"
+            onClick={() => router.push("/orders")}
+          >
+            View orders
+          </button>
+        </div>
+      )}
+      {error && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
+          {error}
+        </div>
+      )}
+
+      {loading ? (
+        <p className="text-gray-400">Loading menu…</p>
+      ) : items.length === 0 ? (
+        <p className="text-gray-400">No menu items available.</p>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {items.map((item, idx) => (
+            <Card key={idx} className="flex flex-col justify-between">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">{item.item_name}</CardTitle>
+              </CardHeader>
+              <CardContent className="flex items-center justify-between">
+                <div className="space-y-1">
+                  {item.category && (
+                    <Badge variant="secondary">{item.category}</Badge>
+                  )}
+                  <p className="text-lg font-semibold text-gray-800">
+                    ${item.price?.toFixed(2)}
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  className="bg-orange-500 hover:bg-orange-600 text-white"
+                  disabled={ordering === item.item_name}
+                  onClick={() => placeOrder(item)}
+                >
+                  {ordering === item.item_name ? "Ordering…" : "Order"}
+                </Button>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

@@ -1,15 +1,10 @@
 from __future__ import annotations
 
+import json
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-from app.services.query_validation_service import QueryValidationService
 from app.repositories.search_repo import SearchRepository
-from app.services.sort_helper import (
-    sort_results,
-    VALID_RESTAURANT_SORT_KEYS,
-    VALID_MENU_ITEM_SORT_KEYS,
-    VALID_ORDER_SORT_KEYS,
-)
 from app.schemas.search_filters import (
     CurrentUser,
     MenuItemFilterParams,
@@ -19,7 +14,18 @@ from app.schemas.search_filters import (
     PaginationParams,
     RestaurantFilterParams,
 )
+from app.services.query_validation_service import QueryValidationService
+from app.services.sort_helper import (
+    VALID_MENU_ITEM_SORT_KEYS,
+    VALID_ORDER_SORT_KEYS,
+    VALID_RESTAURANT_SORT_KEYS,
+    sort_results,
+)
 from fastapi import HTTPException
+
+_DEFAULT_SYSTEM_ORDERS_FILE = (
+    Path(__file__).resolve().parent.parent / "data" / "orders.json"
+)
 
 
 # -------------------------
@@ -157,7 +163,9 @@ class SearchService:
                     "restaurant_id": rid,
                     "restaurant_name": rname,
                     "city": r.get("city") or r.get("City") or r.get("location"),
-                    "cuisine": r.get("cuisine") or r.get("Cuisine") or r.get("preferred_cuisine"),
+                    "cuisine": r.get("cuisine")
+                    or r.get("Cuisine")
+                    or r.get("preferred_cuisine"),
                 }
             )
 
@@ -186,7 +194,9 @@ class SearchService:
         out = [x for x in out if self._enforce_scope(user, x, "restaurants")]
 
         # Sort before paginating
-        out = sort_results(out, pagination.sort_by, pagination.sort_order, VALID_RESTAURANT_SORT_KEYS)
+        out = sort_results(
+            out, pagination.sort_by, pagination.sort_order, VALID_RESTAURANT_SORT_KEYS
+        )
 
         page_rows, total = self._paginate(out, pagination)
         return PaginatedResponse(
@@ -226,10 +236,17 @@ class SearchService:
                     "restaurant_id": str(
                         r.get("restaurant_id") or r.get("RestaurantID") or ""
                     ),
-                    "item_name": r.get("item_name") or r.get("FoodItem") or r.get("food_item"),
-                    "category": r.get("category") or r.get("Category") or r.get("preferred_cuisine"),
+                    "item_name": r.get("item_name")
+                    or r.get("FoodItem")
+                    or r.get("food_item"),
+                    "category": r.get("category")
+                    or r.get("Category")
+                    or r.get("preferred_cuisine"),
                     "price": _to_float(
-                        r.get("price") or r.get("Price") or r.get("item_price") or r.get("order_value")
+                        r.get("price")
+                        or r.get("Price")
+                        or r.get("item_price")
+                        or r.get("order_value")
                     ),
                 }
             )
@@ -262,7 +279,9 @@ class SearchService:
         out = [x for x in out if self._enforce_scope(user, x, "menu_items")]
 
         # Sort before paginating
-        out = sort_results(out, pagination.sort_by, pagination.sort_order, VALID_MENU_ITEM_SORT_KEYS)
+        out = sort_results(
+            out, pagination.sort_by, pagination.sort_order, VALID_MENU_ITEM_SORT_KEYS
+        )
 
         page_rows, total = self._paginate(out, pagination)
         return PaginatedResponse(
@@ -311,12 +330,32 @@ class SearchService:
                     "restaurant_id": str(
                         r.get("restaurant_id") or r.get("RestaurantID") or ""
                     ),
-                    "order_status": r.get("order_status") or r.get("OrderStatus") or r.get("food_condition"),
+                    "order_status": r.get("order_status")
+                    or r.get("OrderStatus")
+                    or r.get("food_condition"),
                     "order_value": _to_float(
                         r.get("order_value") or r.get("OrderValue")
                     ),
                 }
             )
+
+        # Also include system orders from orders.json
+        if _DEFAULT_SYSTEM_ORDERS_FILE.exists():
+            system_orders = json.loads(
+                _DEFAULT_SYSTEM_ORDERS_FILE.read_text(encoding="utf-8")
+            )
+            for r in system_orders:
+                orders.append(
+                    {
+                        "order_id": str(r.get("order_id") or ""),
+                        "customer_id": str(r.get("customer_id") or ""),
+                        "restaurant_id": str(r.get("restaurant_id") or ""),
+                        "order_status": r.get("order_status") or "",
+                        "order_value": _to_float(r.get("order_value")),
+                        "food_item": r.get("food_item") or "",
+                        "order_time": r.get("order_time") or "",
+                    }
+                )
 
         out = orders
 
@@ -358,7 +397,9 @@ class SearchService:
         out = [x for x in out if self._enforce_scope(user, x, "orders")]
 
         # Sort before paginating
-        out = sort_results(out, pagination.sort_by, pagination.sort_order, VALID_ORDER_SORT_KEYS)
+        out = sort_results(
+            out, pagination.sort_by, pagination.sort_order, VALID_ORDER_SORT_KEYS
+        )
 
         page_rows, total = self._paginate(out, pagination)
         return PaginatedResponse(
