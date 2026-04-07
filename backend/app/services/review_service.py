@@ -3,7 +3,7 @@ import uuid
 
 from app.repositories import review_repository
 from app.repositories.order_repository import OrderRepository
-from app.schemas.constants import REVIEW_REQUIRED_ORDER_STATUS
+from app.schemas.constants import REVIEW_REQUIRED_ORDER_STATUS, ROLE_ADMIN
 from app.schemas.review import (
     RestaurantRatingSummary,
     ReviewCreate,
@@ -62,7 +62,7 @@ def delete_review(review_id: uuid.UUID, requester_id: str, requester_role: str) 
         raise ReviewError(f"Review '{review_id}' not found.")
 
     # Only the author or an admin may delete
-    if requester_role != "admin" and str(record.customer_id) != requester_id:
+    if requester_role != ROLE_ADMIN and str(record.customer_id) != requester_id:
         raise PermissionError("You can only delete your own reviews.")
 
     review_repository.delete(review_id)

@@ -45,7 +45,7 @@ client = TestClient(app)
 def override_auth():
     app.dependency_overrides[get_current_user] = lambda: MOCK_CUSTOMER
     yield
-    app.dependency_overrides.clear()
+    app.dependency_overrides.pop(get_current_user, None)
 
 
 @pytest.fixture
@@ -184,7 +184,7 @@ def test_get_restaurant_ratings_empty(mock_service):
 
 
 def test_get_restaurant_ratings_requires_auth():
-    app.dependency_overrides.clear()
+    app.dependency_overrides.pop(get_current_user, None)
     response = client.get(f"/reviews/restaurant/{RESTAURANT_ID}")
     assert response.status_code == 401
 
@@ -229,6 +229,6 @@ def test_admin_can_delete_any_review(mock_service):
 
 
 def test_delete_review_requires_auth():
-    app.dependency_overrides.clear()
+    app.dependency_overrides.pop(get_current_user, None)
     response = client.delete(f"/reviews/{REVIEW_ID}")
     assert response.status_code == 401
