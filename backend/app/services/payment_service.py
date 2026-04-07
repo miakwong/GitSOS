@@ -1,7 +1,7 @@
 import uuid
 
 from app.repositories import payment_repository
-from app.schemas.constants import PAYMENT_REQUIRED_ORDER_STATUS, PAYMENT_STATUS_SUCCESS
+from app.schemas.constants import PAYMENT_STATUS_REFUNDED, PAYMENT_REQUIRED_ORDER_STATUS, PAYMENT_STATUS_SUCCESS
 from app.schemas.payment import PaymentCreate, PaymentOut, PaymentRecord
 from app.services.order_service import OrderService
 
