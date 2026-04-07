@@ -49,14 +49,15 @@ def test_get_restaurant_ratings_single_review(mock_repo):
 
 
 def test_get_restaurant_ratings_average_rounded(mock_repo):
+    # 4+4+3 = 11/3 = 3.666... → rounds to 3.67
     mock_repo.get_by_restaurant_id.return_value = [
         _make_record(4),
+        _make_record(4),
         _make_record(3),
-        _make_record(5),
     ]
     result = service.get_restaurant_ratings(RESTAURANT_ID)
     assert result.review_count == 3
-    assert result.average_rating == 4.0
+    assert result.average_rating == 3.67
 
 
 def test_get_restaurant_ratings_average_two_decimals(mock_repo):

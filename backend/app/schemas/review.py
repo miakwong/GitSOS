@@ -42,7 +42,7 @@ class RestaurantRatingSummary(BaseModel):
     restaurant_id: int
     review_count: int
     average_rating: float
-    tag_counts: dict
+    tag_counts: dict[str, int]
     reviews: List["ReviewOut"]
 
 
