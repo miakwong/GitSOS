@@ -3,7 +3,12 @@ import uuid
 
 from app.repositories import review_repository
 from app.schemas.constants import REVIEW_REQUIRED_ORDER_STATUS
-from app.schemas.review import ReviewCreate, ReviewOut, ReviewRecord
+from app.schemas.review import (
+    RestaurantRatingSummary,
+    ReviewCreate,
+    ReviewOut,
+    ReviewRecord,
+)
 from app.services.order_service import OrderService
 
 ReviewError = ValueError
