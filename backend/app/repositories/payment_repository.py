@@ -1,6 +1,7 @@
 # Feat7 — Data access layer for payments
 import json
 import os
+from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID
 
@@ -78,3 +79,15 @@ def get_by_order_id(order_id: UUID) -> Optional[PaymentRecord]:
 def list_all() -> list[PaymentRecord]:
     """Return all payment records. Used by admin endpoints."""
     return [_dict_to_record(data) for data in _load()]
+
+
+def update_status(order_id: UUID, new_status: str) -> Optional[PaymentRecord]:
+    """Update the status of a payment record by order_id. Returns the Updated record, or None if the order is not found."""
+    records = _load()
+    for record in records:
+        if record["order_id"] == str(order_id):
+            record["status"] = new_status
+            record["updated_at"] = datetime.now(timezone.utc).isoformat()
+            _save(records)
+            return _dict_to_record(record)
+    return None

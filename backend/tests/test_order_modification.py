@@ -1,30 +1,44 @@
 # Tests for order modification and cancellation functionality
-import pytest
 import json
 import tempfile
 from pathlib import Path
-from fastapi.testclient import TestClient
-from fastapi import HTTPException
-
-from app.main import app
-from app.schemas.order import (
-    OrderCreate, OrderUpdate, Order, OrderStatus,
-    DeliveryMethod, TrafficCondition, WeatherCondition,
-    MODIFIABLE_STATUSES, CANCELLABLE_STATUSES
-)
-from app.repositories.order_repository import OrderRepository, KaggleOrderRepository
-from app.services.order_service import OrderService
 from unittest.mock import patch
+from uuid import UUID
+
+import pytest
+from app.dependencies import get_current_user
+from app.main import app
+from app.repositories.order_repository import KaggleOrderRepository, OrderRepository
+from app.schemas.order import (
+    DeliveryMethod,
+    OrderCreate,
+    OrderStatus,
+    OrderUpdate,
+    TrafficCondition,
+    WeatherCondition,
+)
+from app.schemas.user import UserInDB
+from app.services.order_service import OrderService
+from fastapi import HTTPException
+from fastapi.testclient import TestClient
 
 client = TestClient(app)
+
+CUST_123_ID = UUID("00000000-0000-0000-0000-000000000123")
+CUST_456_ID = UUID("00000000-0000-0000-0000-000000000456")
+
+MOCK_CUST_123 = UserInDB(
+    id=CUST_123_ID, email="cust123@test.com", role="customer", password_hash="x"
+)
+MOCK_CUST_456 = UserInDB(
+    id=CUST_456_ID, email="cust456@test.com", role="customer", password_hash="x"
+)
 
 
 @pytest.fixture(autouse=True)
 def mock_notif():
     with patch("app.routers.orders._notif_service"):
         yield
-
-
 
 
 # Create a temporary JSON file for system orders
@@ -78,8 +92,6 @@ def sample_order(order_service):
     return order_service.create_order(order_data)
 
 
-
-
 class TestOrderUpdateSchemaValidation:
 
     # Test valid partial update schema
@@ -88,7 +100,6 @@ class TestOrderUpdateSchemaValidation:
         assert update.food_item == "Burritos"
         assert update.delivery_method is None
         assert update.traffic_condition is None
-
 
     def test_valid_full_update(self):
         update = OrderUpdate(
@@ -106,23 +117,19 @@ class TestOrderUpdateSchemaValidation:
         assert update.traffic_condition == TrafficCondition.HIGH
         assert update.weather_condition == WeatherCondition.RAINY
 
-  
     def test_empty_update_allowed(self):
         update = OrderUpdate()
         assert update.food_item is None
         assert update.order_value is None
 
-
     def test_empty_food_item_rejected(self):
         with pytest.raises(ValueError):
             OrderUpdate(food_item="")
 
-   
     def test_whitespace_food_item_rejected(self):
         with pytest.raises(ValueError):
             OrderUpdate(food_item="   ")
 
-   
     def test_delivery_distance_below_minimum_rejected(self):
         with pytest.raises(ValueError):
             OrderUpdate(delivery_distance=1.9)
@@ -138,17 +145,13 @@ class TestOrderUpdateSchemaValidation:
             OrderUpdate(delivery_method="Helicopter")
 
 
-
-
 class TestOrderOwnershipValidation:
 
     # Test customer can update their own order
     def test_owner_can_update_own_order(self, order_service, sample_order):
         update_data = OrderUpdate(traffic_condition=TrafficCondition.MEDIUM)
         updated_order = order_service.update_order(
-            str(sample_order.order_id),
-            "cust-123",  # Same as order owner
-            update_data
+            str(sample_order.order_id), "cust-123", update_data  # Same as order owner
         )
         assert updated_order.traffic_condition == TrafficCondition.MEDIUM
 
@@ -159,7 +162,7 @@ class TestOrderOwnershipValidation:
             order_service.update_order(
                 str(sample_order.order_id),
                 "cust-456",  # Different customer
-                update_data
+                update_data,
             )
         assert exc_info.value.status_code == 403
         assert "own orders" in exc_info.value.detail
@@ -167,8 +170,7 @@ class TestOrderOwnershipValidation:
     # Test customer can cancel their own order
     def test_owner_can_cancel_own_order(self, order_service, sample_order):
         cancelled_order = order_service.cancel_order(
-            str(sample_order.order_id),
-            "cust-123"  # Same as order owner
+            str(sample_order.order_id), "cust-123"  # Same as order owner
         )
         assert cancelled_order.order_status == OrderStatus.CANCELLED
 
@@ -176,13 +178,10 @@ class TestOrderOwnershipValidation:
     def test_non_owner_cannot_cancel_order(self, order_service, sample_order):
         with pytest.raises(HTTPException) as exc_info:
             order_service.cancel_order(
-                str(sample_order.order_id),
-                "cust-456"  # Different customer
+                str(sample_order.order_id), "cust-456"  # Different customer
             )
         assert exc_info.value.status_code == 403
         assert "own orders" in exc_info.value.detail
-
-
 
 
 class TestOrderWorkflowValidation:
@@ -192,9 +191,7 @@ class TestOrderWorkflowValidation:
         assert sample_order.order_status == OrderStatus.PLACED
         update_data = OrderUpdate(weather_condition=WeatherCondition.RAINY)
         updated_order = order_service.update_order(
-            str(sample_order.order_id),
-            "cust-123",
-            update_data
+            str(sample_order.order_id), "cust-123", update_data
         )
         assert updated_order.weather_condition == WeatherCondition.RAINY
 
@@ -202,109 +199,112 @@ class TestOrderWorkflowValidation:
     def test_placed_order_can_be_cancelled(self, order_service, sample_order):
         assert sample_order.order_status == OrderStatus.PLACED
         cancelled_order = order_service.cancel_order(
-            str(sample_order.order_id),
-            "cust-123"
+            str(sample_order.order_id), "cust-123"
         )
         assert cancelled_order.order_status == OrderStatus.CANCELLED
 
-    # Test order in Paid status cannot be updated 
-    def test_paid_order_cannot_be_updated(self, order_service, sample_order, order_repo):
+    # Test order in Paid status cannot be updated
+    def test_paid_order_cannot_be_updated(
+        self, order_service, sample_order, order_repo
+    ):
         # Manually change status to Paid
         order_repo.update_order_status(str(sample_order.order_id), OrderStatus.PAID)
-        
+
         update_data = OrderUpdate(traffic_condition=TrafficCondition.HIGH)
         with pytest.raises(HTTPException) as exc_info:
             order_service.update_order(
-                str(sample_order.order_id),
-                "cust-123",
-                update_data
+                str(sample_order.order_id), "cust-123", update_data
             )
         assert exc_info.value.status_code == 400
         assert "cannot be modified" in exc_info.value.detail
 
-    # Test order in Paid status can be cancelled 
+    # Test order in Paid status can be cancelled
     def test_paid_order_can_be_cancelled(self, order_service, sample_order, order_repo):
         # Manually change status to Paid
         order_repo.update_order_status(str(sample_order.order_id), OrderStatus.PAID)
-        
+
         cancelled_order = order_service.cancel_order(
-            str(sample_order.order_id),
-            "cust-123"
+            str(sample_order.order_id), "cust-123"
         )
         assert cancelled_order.order_status == OrderStatus.CANCELLED
 
+    def test_preparing_order_cannot_be_updated(
+        self, order_service, sample_order, order_repo
+    ):
+        order_repo.update_order_status(
+            str(sample_order.order_id), OrderStatus.PREPARING
+        )
 
-    def test_preparing_order_cannot_be_updated(self, order_service, sample_order, order_repo):
-        order_repo.update_order_status(str(sample_order.order_id), OrderStatus.PREPARING)
-        
         update_data = OrderUpdate(food_item="Burritos")
         with pytest.raises(HTTPException) as exc_info:
             order_service.update_order(
-                str(sample_order.order_id),
-                "cust-123",
-                update_data
+                str(sample_order.order_id), "cust-123", update_data
             )
         assert exc_info.value.status_code == 400
 
-    def test_preparing_order_cannot_be_cancelled(self, order_service, sample_order, order_repo):
-        order_repo.update_order_status(str(sample_order.order_id), OrderStatus.PREPARING)
-        
+    def test_preparing_order_cannot_be_cancelled(
+        self, order_service, sample_order, order_repo
+    ):
+        order_repo.update_order_status(
+            str(sample_order.order_id), OrderStatus.PREPARING
+        )
+
         with pytest.raises(HTTPException) as exc_info:
-            order_service.cancel_order(
-                str(sample_order.order_id),
-                "cust-123"
-            )
+            order_service.cancel_order(str(sample_order.order_id), "cust-123")
         assert exc_info.value.status_code == 400
         assert "cannot be cancelled" in exc_info.value.detail
 
-    def test_delivered_order_cannot_be_updated(self, order_service, sample_order, order_repo):
-        order_repo.update_order_status(str(sample_order.order_id), OrderStatus.DELIVERED)
-        
+    def test_delivered_order_cannot_be_updated(
+        self, order_service, sample_order, order_repo
+    ):
+        order_repo.update_order_status(
+            str(sample_order.order_id), OrderStatus.DELIVERED
+        )
+
         update_data = OrderUpdate(delivery_method=DeliveryMethod.CAR)
         with pytest.raises(HTTPException) as exc_info:
             order_service.update_order(
-                str(sample_order.order_id),
-                "cust-123",
-                update_data
+                str(sample_order.order_id), "cust-123", update_data
             )
         assert exc_info.value.status_code == 400
 
-    
-    def test_delivered_order_cannot_be_cancelled(self, order_service, sample_order, order_repo):
-        order_repo.update_order_status(str(sample_order.order_id), OrderStatus.DELIVERED)
-        
+    def test_delivered_order_cannot_be_cancelled(
+        self, order_service, sample_order, order_repo
+    ):
+        order_repo.update_order_status(
+            str(sample_order.order_id), OrderStatus.DELIVERED
+        )
+
         with pytest.raises(HTTPException) as exc_info:
-            order_service.cancel_order(
-                str(sample_order.order_id),
-                "cust-123"
-            )
+            order_service.cancel_order(str(sample_order.order_id), "cust-123")
         assert exc_info.value.status_code == 400
 
     # Test already cancelled order cannot be updated
-    def test_cancelled_order_cannot_be_updated(self, order_service, sample_order, order_repo):
-        order_repo.update_order_status(str(sample_order.order_id), OrderStatus.CANCELLED)
-        
+    def test_cancelled_order_cannot_be_updated(
+        self, order_service, sample_order, order_repo
+    ):
+        order_repo.update_order_status(
+            str(sample_order.order_id), OrderStatus.CANCELLED
+        )
+
         update_data = OrderUpdate(traffic_condition=TrafficCondition.LOW)
         with pytest.raises(HTTPException) as exc_info:
             order_service.update_order(
-                str(sample_order.order_id),
-                "cust-123",
-                update_data
+                str(sample_order.order_id), "cust-123", update_data
             )
         assert exc_info.value.status_code == 400
 
     # Test already cancelled order cannot be cancelled again
-    def test_cancelled_order_cannot_be_cancelled_again(self, order_service, sample_order, order_repo):
-        order_repo.update_order_status(str(sample_order.order_id), OrderStatus.CANCELLED)
-        
+    def test_cancelled_order_cannot_be_cancelled_again(
+        self, order_service, sample_order, order_repo
+    ):
+        order_repo.update_order_status(
+            str(sample_order.order_id), OrderStatus.CANCELLED
+        )
+
         with pytest.raises(HTTPException) as exc_info:
-            order_service.cancel_order(
-                str(sample_order.order_id),
-                "cust-123"
-            )
+            order_service.cancel_order(str(sample_order.order_id), "cust-123")
         assert exc_info.value.status_code == 400
-
-
 
 
 class TestFoodItemValidation:
@@ -313,66 +313,49 @@ class TestFoodItemValidation:
     def test_update_food_item_valid(self, order_service, sample_order):
         update_data = OrderUpdate(food_item="Burritos")  # Valid for restaurant 16
         updated_order = order_service.update_order(
-            str(sample_order.order_id),
-            "cust-123",
-            update_data
+            str(sample_order.order_id), "cust-123", update_data
         )
         assert updated_order.food_item == "Burritos"
 
-    # Test updating food_item to invalid item 
+    # Test updating food_item to invalid item
     def test_update_food_item_invalid_for_restaurant(self, order_service, sample_order):
         update_data = OrderUpdate(food_item="Pasta")  # Only at restaurant 30, not 16
         with pytest.raises(HTTPException) as exc_info:
             order_service.update_order(
-                str(sample_order.order_id),
-                "cust-123",
-                update_data
+                str(sample_order.order_id), "cust-123", update_data
             )
         assert exc_info.value.status_code == 400
         assert "not offered" in exc_info.value.detail
-    #test updating food_item to an item that doesn't exist in Kaggle data returns 400 with appropriate message
-   
+
+    # test updating food_item to an item that doesn't exist in Kaggle data returns 400 with appropriate message
+
     def test_update_food_item_nonexistent(self, order_service, sample_order):
         update_data = OrderUpdate(food_item="Sushi")  # Doesn't exist anywhere
         with pytest.raises(HTTPException) as exc_info:
             order_service.update_order(
-                str(sample_order.order_id),
-                "cust-123",
-                update_data
+                str(sample_order.order_id), "cust-123", update_data
             )
         assert exc_info.value.status_code == 400
         assert "not offered" in exc_info.value.detail
 
 
-
-
 class TestKaggleOrderRejection:
 
-   
     def test_kaggle_order_cannot_be_updated(self, order_service):
         update_data = OrderUpdate(traffic_condition=TrafficCondition.HIGH)
         with pytest.raises(HTTPException) as exc_info:
-            order_service.update_order(
-                "kaggle-001",
-                "cust-123",
-                update_data
-            )
+            order_service.update_order("kaggle-001", "cust-123", update_data)
         assert exc_info.value.status_code == 400
         assert "Kaggle" in exc_info.value.detail
         assert "cannot be modified" in exc_info.value.detail
 
-   #test that cancelling a Kaggle order returns 400 with appropriate message
+    # test that cancelling a Kaggle order returns 400 with appropriate message
     def test_kaggle_order_cannot_be_cancelled(self, order_service):
         with pytest.raises(HTTPException) as exc_info:
-            order_service.cancel_order(
-                "kaggle-001",
-                "cust-123"
-            )
+            order_service.cancel_order("kaggle-001", "cust-123")
         assert exc_info.value.status_code == 400
         assert "Kaggle" in exc_info.value.detail
         assert "cannot be cancelled" in exc_info.value.detail
-
-
 
 
 class TestNonExistentOrderHandling:
@@ -381,30 +364,20 @@ class TestNonExistentOrderHandling:
     def test_update_nonexistent_order(self, order_service):
         update_data = OrderUpdate(traffic_condition=TrafficCondition.HIGH)
         with pytest.raises(HTTPException) as exc_info:
-            order_service.update_order(
-                "non-existent-id",
-                "cust-123",
-                update_data
-            )
+            order_service.update_order("non-existent-id", "cust-123", update_data)
         assert exc_info.value.status_code == 404
         assert "not found" in exc_info.value.detail
 
     # Test cancelling non-existent order returns 404
     def test_cancel_nonexistent_order(self, order_service):
         with pytest.raises(HTTPException) as exc_info:
-            order_service.cancel_order(
-                "non-existent-id",
-                "cust-123"
-            )
+            order_service.cancel_order("non-existent-id", "cust-123")
         assert exc_info.value.status_code == 404
         assert "not found" in exc_info.value.detail
 
 
-
-
 class TestOrderRepositoryUpdate:
 
-  
     def test_update_order_partial(self, order_repo):
         # Create an order first
         order_data = OrderCreate(
@@ -416,15 +389,16 @@ class TestOrderRepositoryUpdate:
             delivery_method=DeliveryMethod.BIKE,
         )
         created_order = order_repo.create_order(order_data)
-        
+
         # update only trafic condition and check that other fields remain unchanged
         update_data = OrderUpdate(traffic_condition=TrafficCondition.HIGH)
-        updated_order = order_repo.update_order(str(created_order.order_id), update_data)
-        
+        updated_order = order_repo.update_order(
+            str(created_order.order_id), update_data
+        )
+
         assert updated_order.traffic_condition == TrafficCondition.HIGH
         assert updated_order.food_item == "Taccos"  # Unchanged
         assert updated_order.delivery_method == DeliveryMethod.BIKE  # Unchanged
-
 
     def test_update_order_full(self, order_repo):
         order_data = OrderCreate(
@@ -436,7 +410,7 @@ class TestOrderRepositoryUpdate:
             delivery_method=DeliveryMethod.BIKE,
         )
         created_order = order_repo.create_order(order_data)
-        
+
         update_data = OrderUpdate(
             food_item="Burritos",
             order_value=30.00,
@@ -445,15 +419,16 @@ class TestOrderRepositoryUpdate:
             traffic_condition=TrafficCondition.HIGH,
             weather_condition=WeatherCondition.RAINY,
         )
-        updated_order = order_repo.update_order(str(created_order.order_id), update_data)
-        
+        updated_order = order_repo.update_order(
+            str(created_order.order_id), update_data
+        )
+
         assert updated_order.food_item == "Burritos"
         assert updated_order.order_value == 30.00
         assert updated_order.delivery_distance == 8.0
         assert updated_order.delivery_method == DeliveryMethod.CAR
         assert updated_order.traffic_condition == TrafficCondition.HIGH
         assert updated_order.weather_condition == WeatherCondition.RAINY
-
 
     def test_update_order_status(self, order_repo):
         order_data = OrderCreate(
@@ -466,80 +441,200 @@ class TestOrderRepositoryUpdate:
         )
         created_order = order_repo.create_order(order_data)
         assert created_order.order_status == OrderStatus.PLACED
-        
+
         updated_order = order_repo.update_order_status(
-            str(created_order.order_id),
-            OrderStatus.CANCELLED
+            str(created_order.order_id), OrderStatus.CANCELLED
         )
         assert updated_order.order_status == OrderStatus.CANCELLED
 
-    #test that updating non-existent order and returns None
+    # test that updating non-existent order and returns None
     def test_update_nonexistent_order_returns_none(self, order_repo):
         update_data = OrderUpdate(traffic_condition=TrafficCondition.HIGH)
         result = order_repo.update_order("non-existent-id", update_data)
         assert result is None
 
-    #test that updating status of non-existent order returns None
+    # test that updating status of non-existent order returns None
 
     def test_update_status_nonexistent_order_returns_none(self, order_repo):
-        result = order_repo.update_order_status("non-existent-id", OrderStatus.CANCELLED)
+        result = order_repo.update_order_status(
+            "non-existent-id", OrderStatus.CANCELLED
+        )
         assert result is None
 
 
-
-
 class TestOrderModificationEndpoints:
+    """Endpoint-level tests for PUT and DELETE /orders routes.
 
+    Each test overrides get_current_user so the router derives customer
+    identity from the token rather than a query param.  A UUID-keyed order
+    fixture is used so str(user.id) matches order.customer_id exactly.
+    """
 
-    def test_put_order_valid_update(self, order_service, sample_order, monkeypatch):
- 
-        from app.routers import orders as orders_router
-        monkeypatch.setattr(orders_router, "order_service", order_service)
-        
-        response = client.put(
-            f"/orders/{sample_order.order_id}",
-            params={"customer_id": "cust-123"},
-            json={"traffic_condition": "High"}
+    @pytest.fixture
+    def uuid_order(self, order_repo):
+        """Order whose customer_id equals the string form of CUST_123_ID.
+
+        Written directly via the repo to skip customer/restaurant validation,
+        mirroring the approach used by other endpoint fixtures in this file.
+        """
+        order_data = OrderCreate(
+            customer_id=str(CUST_123_ID),
+            restaurant_id=16,
+            food_item="Taccos",
+            order_value=25.50,
+            delivery_distance=5.0,
+            delivery_method=DeliveryMethod.BIKE,
         )
-        assert response.status_code == 200
-        data = response.json()
-        assert data["traffic_condition"] == "High"
+        return order_repo.create_order(order_data)
 
-    #test that a customer cannot update another customer's order
-
-    def test_put_order_ownership_violation(self, order_service, sample_order, monkeypatch):
+    def test_put_order_valid_update(
+        self, uuid_order, order_repo, kaggle_repo, monkeypatch
+    ):
         from app.routers import orders as orders_router
-        monkeypatch.setattr(orders_router, "order_service", order_service)
-        
-        response = client.put(
-            f"/orders/{sample_order.order_id}",
-            params={"customer_id": "cust-456"},  # Wrong customer
-            json={"traffic_condition": "High"}
-        )
-        assert response.status_code == 403
 
-    #test that a customer can cancel their own order
+        svc = OrderService(order_repo=order_repo, kaggle_repo=kaggle_repo)
+        monkeypatch.setattr(orders_router, "order_service", svc)
+        app.dependency_overrides[get_current_user] = lambda: MOCK_CUST_123
+        try:
+            response = client.put(
+                f"/orders/{uuid_order.order_id}",
+                json={"traffic_condition": "High"},
+            )
+            assert response.status_code == 200
+            assert response.json()["traffic_condition"] == "High"
+        finally:
+            app.dependency_overrides.pop(get_current_user, None)
 
-    def test_cancel_order_valid(self, order_service, sample_order, monkeypatch):
+    def test_put_order_ownership_violation(
+        self, uuid_order, order_repo, kaggle_repo, monkeypatch
+    ):
         from app.routers import orders as orders_router
-        monkeypatch.setattr(orders_router, "order_service", order_service)
-        
-        response = client.delete(
-            f"/orders/{sample_order.order_id}/cancel",
-            params={"customer_id": "cust-123"}
-        )
-        assert response.status_code == 200
-        data = response.json()
-        assert data["order_status"] == "Cancelled"
 
-    # test that a customer cannot cancel another customer's order
-    def test_cancel_order_ownership_violation(self, order_service, sample_order, monkeypatch):
+        svc = OrderService(order_repo=order_repo, kaggle_repo=kaggle_repo)
+        monkeypatch.setattr(orders_router, "order_service", svc)
+        app.dependency_overrides[get_current_user] = lambda: MOCK_CUST_456
+        try:
+            response = client.put(
+                f"/orders/{uuid_order.order_id}",
+                json={"traffic_condition": "High"},
+            )
+            assert response.status_code == 403
+        finally:
+            app.dependency_overrides.pop(get_current_user, None)
+
+    def test_cancel_order_valid(self, uuid_order, order_repo, kaggle_repo, monkeypatch):
         from app.routers import orders as orders_router
-        monkeypatch.setattr(orders_router, "order_service", order_service)
-        
-        response = client.delete(
-            f"/orders/{sample_order.order_id}/cancel",
-            params={"customer_id": "cust-456"}  # Wrong customer
-        )
-        assert response.status_code == 403
 
+        svc = OrderService(order_repo=order_repo, kaggle_repo=kaggle_repo)
+        monkeypatch.setattr(orders_router, "order_service", svc)
+        app.dependency_overrides[get_current_user] = lambda: MOCK_CUST_123
+        try:
+            response = client.delete(f"/orders/{uuid_order.order_id}/cancel")
+            assert response.status_code == 200
+            assert response.json()["order_status"] == "Cancelled"
+        finally:
+            app.dependency_overrides.pop(get_current_user, None)
+
+    def test_cancel_order_ownership_violation(
+        self, uuid_order, order_repo, kaggle_repo, monkeypatch
+    ):
+        from app.routers import orders as orders_router
+
+        svc = OrderService(order_repo=order_repo, kaggle_repo=kaggle_repo)
+        monkeypatch.setattr(orders_router, "order_service", svc)
+        app.dependency_overrides[get_current_user] = lambda: MOCK_CUST_456
+        try:
+            response = client.delete(f"/orders/{uuid_order.order_id}/cancel")
+            assert response.status_code == 403
+        finally:
+            app.dependency_overrides.pop(get_current_user, None)
+
+
+
+class TestCancelOrderRefundTrigger:
+
+    @pytest.fixture
+    def uuid_sample_order(self, order_repo):
+        """Order whose customer_id equals str(CUST_123_ID) so MOCK_CUST_123 passes ownership check."""
+        order_data = OrderCreate(
+            customer_id=str(CUST_123_ID),
+            restaurant_id=16,
+            food_item="Taccos",
+            order_value=25.50,
+            delivery_distance=5.0,
+            delivery_method=DeliveryMethod.BIKE,
+        )
+        return order_repo.create_order(order_data)
+
+    def test_cancelling_placed_order_does_not_trigger_refund(self, order_service, uuid_sample_order, mocker):
+        # A Placed order has no payment, so the refund_payment should not be called
+        mocker.patch("app.routers.orders.order_service", order_service)
+        mock_payment = mocker.patch("app.routers.orders.payment_service")
+
+        app.dependency_overrides[get_current_user] = lambda: MOCK_CUST_123
+        try:
+            response = client.delete(f"/orders/{uuid_sample_order.order_id}/cancel")
+            assert response.status_code == 200
+            mock_payment.refund_payment.assert_not_called()
+        finally:
+            app.dependency_overrides.pop(get_current_user, None)
+
+    def test_cancelling_paid_order_triggers_refund(self, order_service, uuid_sample_order, order_repo, mocker):
+        # Manually advance order to Paid status before cancelling the order
+        order_repo.update_order_status(str(uuid_sample_order.order_id), OrderStatus.PAID)
+
+        mocker.patch("app.routers.orders.order_service", order_service)
+        mock_payment = mocker.patch("app.routers.orders.payment_service")
+
+        app.dependency_overrides[get_current_user] = lambda: MOCK_CUST_123
+        try:
+            response = client.delete(f"/orders/{uuid_sample_order.order_id}/cancel")
+            assert response.status_code == 200
+            mock_payment.refund_payment.assert_called_once()
+        finally:
+            app.dependency_overrides.pop(get_current_user, None)
+
+    def test_cancelling_paid_order_refund_uses_correct_order_id(self, order_service, uuid_sample_order, order_repo, mocker):
+        # This is to make sure refund_payment is called with the correct order UUID
+        order_repo.update_order_status(str(uuid_sample_order.order_id), OrderStatus.PAID)
+
+        mocker.patch("app.routers.orders.order_service", order_service)
+        mock_payment = mocker.patch("app.routers.orders.payment_service")
+
+        app.dependency_overrides[get_current_user] = lambda: MOCK_CUST_123
+        try:
+            client.delete(f"/orders/{uuid_sample_order.order_id}/cancel")
+            mock_payment.refund_payment.assert_called_once_with(uuid_sample_order.order_id)
+        finally:
+            app.dependency_overrides.pop(get_current_user, None)
+
+    def test_cancelling_paid_order_still_returns_cancelled_status(self, order_service, uuid_sample_order, order_repo, mocker):
+        # Test that even with a refund triggered, the order should still come back as Cancelled status in the response
+        order_repo.update_order_status(str(uuid_sample_order.order_id), OrderStatus.PAID)
+
+        mocker.patch("app.routers.orders.order_service", order_service)
+        mocker.patch("app.routers.orders.payment_service")
+
+        app.dependency_overrides[get_current_user] = lambda: MOCK_CUST_123
+        try:
+            response = client.delete(f"/orders/{uuid_sample_order.order_id}/cancel")
+            assert response.status_code == 200
+            assert response.json()["order_status"] == "Cancelled"
+        finally:
+            app.dependency_overrides.pop(get_current_user, None)
+
+    def test_cancelling_paid_order_still_returns_200_if_refund_fails(self, order_service, uuid_sample_order, order_repo, mocker):
+        # If refund_payment raises, the cancel should still succeed, but order stays Cancelled
+        order_repo.update_order_status(str(uuid_sample_order.order_id), OrderStatus.PAID)
+
+        mocker.patch("app.routers.orders.order_service", order_service)
+        mock_payment = mocker.patch("app.routers.orders.payment_service")
+        mock_payment.refund_payment.side_effect = ValueError("Simulated refund failure")
+
+        app.dependency_overrides[get_current_user] = lambda: MOCK_CUST_123
+        try:
+            response = client.delete(f"/orders/{uuid_sample_order.order_id}/cancel")
+            assert response.status_code == 200
+            assert response.json()["order_status"] == "Cancelled"
+        finally:
+            app.dependency_overrides.pop(get_current_user, None)
