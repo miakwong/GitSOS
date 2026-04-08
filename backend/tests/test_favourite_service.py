@@ -1,0 +1,143 @@
+import json
+import tempfile
+import uuid
+from datetime import datetime, timezone
+from pathlib import Path
+from unittest.mock import patch
+from uuid import UUID
+
+import pytest
+from app.schemas.favourite import FavouriteCreate, FavouriteRecord
+from app.schemas.order import DeliveryMethod, Order, OrderStatus, TrafficCondition, WeatherCondition
+from fastapi import HTTPException
+
+
+CUSTOMER_ID = str(uuid.uuid4())
+OTHER_CUSTOMER_ID = str(uuid.uuid4())
+ORDER_ID = uuid.uuid4()
+
+
+def make_order(order_id=None, customer_id=None):
+    return Order(
+        order_id=order_id or ORDER_ID,
+        customer_id=customer_id or CUSTOMER_ID,
+        restaurant_id=16,
+        food_item="Tacos",
+        order_time=datetime.now(timezone.utc),
+        order_value=20.0,
+        delivery_distance=5.0,
+        delivery_method=DeliveryMethod.BIKE,
+        traffic_condition=TrafficCondition.LOW,
+        weather_condition=WeatherCondition.SUNNY,
+        order_status=OrderStatus.PLACED,
+    )
+
+
+@pytest.fixture
+def temp_favourites_file(tmp_path):
+    f = tmp_path / "favourites.json"
+    f.write_text("[]")
+    return f
+
+
+@pytest.fixture(autouse=True)
+def patch_data_path(temp_favourites_file):
+    with patch("app.repositories.favourite_repository.DATA_PATH", str(temp_favourites_file)):
+        yield
+
+
+class TestAddFavourite:
+
+    def test_add_favourite_success(self):
+        from app.services import favourite_service
+
+        order = make_order()
+        with patch.object(favourite_service._order_repo, "get_order_by_id", return_value=order):
+            payload = FavouriteCreate(order_id=ORDER_ID)
+            result = favourite_service.add_favourite(payload, CUSTOMER_ID)
+
+        assert result.order_id == str(ORDER_ID)
+        assert result.customer_id == CUSTOMER_ID
+        assert result.favourite_id is not None
+
+    def test_add_favourite_order_not_found(self):
+        from app.services import favourite_service
+
+        with patch.object(favourite_service._order_repo, "get_order_by_id", return_value=None):
+            payload = FavouriteCreate(order_id=ORDER_ID)
+            with pytest.raises(HTTPException) as exc_info:
+                favourite_service.add_favourite(payload, CUSTOMER_ID)
+        assert exc_info.value.status_code == 404
+
+    def test_add_favourite_duplicate_rejected(self):
+        from app.services import favourite_service
+
+        order = make_order()
+        with patch.object(favourite_service._order_repo, "get_order_by_id", return_value=order):
+            payload = FavouriteCreate(order_id=ORDER_ID)
+            favourite_service.add_favourite(payload, CUSTOMER_ID)
+
+            with pytest.raises(HTTPException) as exc_info:
+                favourite_service.add_favourite(payload, CUSTOMER_ID)
+        assert exc_info.value.status_code == 400
+        assert "already in your favourites" in exc_info.value.detail
+
+
+class TestGetFavourites:
+
+    def test_get_favourites_returns_own_only(self):
+        from app.services import favourite_service
+
+        order1 = make_order()
+        order2 = make_order(order_id=uuid.uuid4())
+
+        with patch.object(favourite_service._order_repo, "get_order_by_id", return_value=order1):
+            favourite_service.add_favourite(FavouriteCreate(order_id=order1.order_id), CUSTOMER_ID)
+
+        with patch.object(favourite_service._order_repo, "get_order_by_id", return_value=order2):
+            favourite_service.add_favourite(FavouriteCreate(order_id=order2.order_id), OTHER_CUSTOMER_ID)
+
+        results = favourite_service.get_favourites(CUSTOMER_ID)
+        assert len(results) == 1
+        assert results[0].customer_id == CUSTOMER_ID
+
+    def test_get_favourites_empty_list(self):
+        from app.services import favourite_service
+
+        results = favourite_service.get_favourites(CUSTOMER_ID)
+        assert results == []
+
+
+class TestRemoveFavourite:
+
+    def test_remove_favourite_success(self):
+        from app.services import favourite_service
+
+        order = make_order()
+        with patch.object(favourite_service._order_repo, "get_order_by_id", return_value=order):
+            created = favourite_service.add_favourite(FavouriteCreate(order_id=ORDER_ID), CUSTOMER_ID)
+
+        fav_uuid = UUID(created.favourite_id)
+        favourite_service.remove_favourite(fav_uuid, CUSTOMER_ID)
+
+        results = favourite_service.get_favourites(CUSTOMER_ID)
+        assert len(results) == 0
+
+    def test_remove_favourite_not_found(self):
+        from app.services import favourite_service
+
+        with pytest.raises(HTTPException) as exc_info:
+            favourite_service.remove_favourite(uuid.uuid4(), CUSTOMER_ID)
+        assert exc_info.value.status_code == 404
+
+    def test_remove_favourite_wrong_customer(self):
+        from app.services import favourite_service
+
+        order = make_order()
+        with patch.object(favourite_service._order_repo, "get_order_by_id", return_value=order):
+            created = favourite_service.add_favourite(FavouriteCreate(order_id=ORDER_ID), CUSTOMER_ID)
+
+        fav_uuid = UUID(created.favourite_id)
+        with pytest.raises(HTTPException) as exc_info:
+            favourite_service.remove_favourite(fav_uuid, OTHER_CUSTOMER_ID)
+        assert exc_info.value.status_code == 403
