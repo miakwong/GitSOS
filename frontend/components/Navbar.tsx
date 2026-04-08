@@ -78,12 +78,12 @@ export default function Navbar() {
           <Link href="/search" className="text-sm text-gray-600 hover:text-gray-900">
             Restaurants
           </Link>
-          {user && (
+          {user && user.role !== "admin" && (
             <Link href="/orders" className="text-sm text-gray-600 hover:text-gray-900">
               My Orders
             </Link>
           )}
-          {user && (
+          {user && user.role !== "admin" && (
             <Link href="/reviews" className="text-sm text-gray-600 hover:text-gray-900">
               Reviews
             </Link>
@@ -91,6 +91,11 @@ export default function Navbar() {
           {user?.role === "admin" && (
             <Link href="/admin" className="text-sm text-orange-600 font-medium hover:text-orange-800">
               Admin
+            </Link>
+          )}
+          {user?.role === "admin" && (
+            <Link href="/admin/reports" className="text-sm text-orange-600 font-medium hover:text-orange-800">
+              Reports
             </Link>
           )}
         </div>
