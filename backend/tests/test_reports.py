@@ -10,25 +10,42 @@ client = TestClient(app)
 
 class TestSystemReportEndpoints:
     
-    def test_system_report_endpoint_exists(self):
+    def test_system_report_returns_all_sections(self):
         response = client.get("/admin/reports/system")
-        assert response.status_code in [200, 403, 401]
+        if response.status_code == 200:
+            data = response.json()
+            assert "orders" in data
+            assert "deliveries" in data
+            assert "payments" in data
+            assert "reviews" in data
     
-    def test_orders_report_endpoint_exists(self):
+    def test_orders_report_has_required_fields(self):
         response = client.get("/admin/reports/orders")
-        assert response.status_code in [200, 403, 401]
+        if response.status_code == 200:
+            data = response.json()
+            assert "total_orders" in data
+            assert "completed_orders" in data
+            assert "cancelled_orders" in data
     
-    def test_deliveries_report_endpoint_exists(self):
+    def test_deliveries_report_has_required_fields(self):
         response = client.get("/admin/reports/deliveries")
-        assert response.status_code in [200, 403, 401]
+        if response.status_code == 200:
+            data = response.json()
+            assert "total_deliveries" in data
     
-    def test_payments_report_endpoint_exists(self):
+    def test_payments_report_has_required_fields(self):
         response = client.get("/admin/reports/payments")
-        assert response.status_code in [200, 403, 401]
+        if response.status_code == 200:
+            data = response.json()
+            assert "total_transactions" in data
+            assert "total_refunds" in data
     
-    def test_reviews_report_endpoint_exists(self):
+    def test_reviews_report_has_required_fields(self):
         response = client.get("/admin/reports/reviews")
-        assert response.status_code in [200, 403, 401]
+        if response.status_code == 200:
+            data = response.json()
+            assert "total_reviews" in data
+            assert "average_rating" in data
 
 
 class TestReportAccessControl:
