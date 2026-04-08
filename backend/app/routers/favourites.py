@@ -1,7 +1,7 @@
 from uuid import UUID
 
 from app.dependencies import get_current_user
-from app.schemas.constants import ROLE_CUSTOMER
+from app.schemas.constants import ROLE_CUSTOMER, ROLE_OWNER
 from app.schemas.favourite import FavouriteCreate, FavouriteOut, PopularItemOut
 from app.schemas.order import Order
 from app.schemas.user import UserInDB
@@ -51,7 +51,7 @@ def get_popular_items(
             detail="Customers cannot access favourite analytics.",
         )
 
-    if current_user.role == "owner":
+    if current_user.role == ROLE_OWNER:
         return favourite_service.get_popular_items(restaurant_id=current_user.restaurant_id)
 
     return favourite_service.get_popular_items()
