@@ -112,7 +112,9 @@ def cancel_order(
 ) -> Order:
     # Check order status before cancelling so we know whether to trigger a refund
     existing_order = order_service.get_order(order_id)
-    was_paid = existing_order.order_status == OrderStatus.PAID
+    # Check payment record directly — order status may not reflect payment yet
+    existing_payment = payment_service.get_payment_by_order(existing_order.order_id)
+    was_paid = existing_payment is not None and existing_payment.status == "Success"
 
     order = order_service.cancel_order(order_id, str(current_user.id))
 
