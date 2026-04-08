@@ -1,14 +1,13 @@
+# repositories/kaggle_order_repository.py
+# Read-only adapter for Kaggle food delivery CSV
+
 import csv
 import os
-import statistics
 from typing import Optional
 
 from app.schemas.kaggle import KaggleOrder
 
 CSV_PATH = os.path.join(os.path.dirname(__file__), "../data/food_delivery.csv")
-
-# Default food price when item is not found in Kaggle data at all
-DEFAULT_FOOD_PRICE = 25.00
 
 
 def _load_csv() -> list[dict]:
@@ -51,35 +50,14 @@ def get_by_food_item(food_item: str) -> list[KaggleOrder]:
     return [_row_to_order(row) for row in _load_csv() if row["food_item"] == food_item]
 
 
-def get_median_price(restaurant_id: int, food_item: str) -> float:
-    """
-    Get the food base price using a 3-tier fallback strategy:
-
-    Level 1 Primary: Median order_value for this exact restaurant_id, food_item pair
-    Level 2 Fallback: Global median order_value for food_item across ALL restaurants
-    Level 3 Default:  $25.00 if the food item is not found anywhere in Kaggle data
-    """
-    rows = _load_csv()
-
-    # --- Lv. 1: Look for prices from this specific restaurant + food item ---
-    specific_prices = [
-        float(row["order_value"])
-        for row in rows
-        if str(row["restaurant_id"]) == str(restaurant_id) and row["food_item"] == food_item
-    ]
-
-    if specific_prices:
-        return round(statistics.median(specific_prices), 2)
-
-    # --- Lv. 2: Look for prices of this food item across ALL restaurants ---
-    global_prices = [
-        float(row["order_value"])
-        for row in rows
-        if row["food_item"] == food_item
-    ]
-
-    if global_prices:
-        return round(statistics.median(global_prices), 2)
-
-    # --- Lv. 3: Food item not in Kaggle at all, use default price ---
-    return DEFAULT_FOOD_PRICE
+def get_median_price(food_item: str) -> Optional[float]:
+    """Get median price for a food item from Kaggle historical data."""
+    orders = get_by_food_item(food_item)
+    if not orders:
+        return None
+    prices = sorted([o.order_value for o in orders])
+    n = len(prices)
+    mid = n // 2
+    if n % 2 == 0:
+        return (prices[mid - 1] + prices[mid]) / 2
+    return prices[mid]
