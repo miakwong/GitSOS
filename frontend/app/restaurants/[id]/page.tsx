@@ -25,6 +25,11 @@ export default function RestaurantDetailPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
+    const user = getUser();
+    if (user?.role === "owner" || user?.role === "admin") {
+      router.replace("/");
+      return;
+    }
     api
       .get("/search/menu-items", { params: { restaurant_id: id, page_size: 100 } })
       .then(({ data }) => setItems(data.data || []))

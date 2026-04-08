@@ -1,9 +1,20 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { getUser } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 
 export default function Home() {
+  const router = useRouter();
+
+  useEffect(() => {
+    const user = getUser();
+    if (user?.role === "owner") router.replace("/owner");
+    else if (user?.role === "admin") router.replace("/admin");
+  }, [router]);
+
   return (
     <div className="max-w-6xl mx-auto px-4 py-20 text-center">
       <h1 className="text-5xl font-bold text-gray-900 mb-4">

@@ -75,10 +75,12 @@ export default function Navbar() {
           <Link href="/" className="font-bold text-lg text-orange-500">
             GitSOS
           </Link>
-          <Link href="/search" className="text-sm text-gray-600 hover:text-gray-900">
-            Restaurants
-          </Link>
-          {user && user.role !== "admin" && (
+          {(!user || user.role === "customer") && (
+            <Link href="/search" className="text-sm text-gray-600 hover:text-gray-900">
+              Restaurants
+            </Link>
+          )}
+          {user?.role === "customer" && (
             <Link href="/orders" className="text-sm text-gray-600 hover:text-gray-900">
               My Orders
             </Link>
@@ -88,7 +90,7 @@ export default function Navbar() {
               Favourites
             </Link>
           )}
-          {user && user.role !== "admin" && (
+          {user?.role === "customer" && (
             <Link href="/reviews" className="text-sm text-gray-600 hover:text-gray-900">
               Reviews
             </Link>
@@ -96,11 +98,6 @@ export default function Navbar() {
           {user?.role === "owner" && (
             <Link href="/owner" className="text-sm text-orange-600 font-medium hover:text-orange-800">
               Dashboard
-            </Link>
-          )}
-          {user?.role === "owner" && (
-            <Link href="/favourites" className="text-sm text-gray-600 hover:text-gray-900">
-              Popular Items
             </Link>
           )}
           {user?.role === "admin" && (

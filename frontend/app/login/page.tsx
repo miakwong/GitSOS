@@ -33,7 +33,7 @@ function LoginForm() {
       setToken(data.access_token);
       const me = await api.get("/auth/me");
       setUser(me.data);
-      router.push(redirect || (me.data.role === "admin" ? "/admin" : "/search"));
+      router.push(redirect || (me.data.role === "admin" ? "/admin" : me.data.role === "owner" ? "/owner" : "/search"));
     } catch {
       setError("Invalid email or password.");
     } finally {
