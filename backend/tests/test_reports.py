@@ -85,45 +85,11 @@ class TestReportDataStructure:
             assert "total_restaurants_reviewed" in data
             assert "five_star_reviews" in data
             assert "one_star_reviews" in data
-=======
-from datetime import date, timedelta
-
-client = TestClient(app)
-
-def test_admin_report_date_filter():
-    today = date.today()
-    resp = client.get(f"/reports/admin/orders?date_start={today}&date_end={today}")
-    assert resp.status_code in [200, 401, 403]
-    if resp.status_code == 200:
-        data = resp.json()
-        assert "total_orders" in data
-
-def test_admin_report_restaurant_filter():
-    resp = client.get("/reports/admin/orders?restaurant_id=test-restaurant")
-    assert resp.status_code in [200, 401, 403]
-    if resp.status_code == 200:
-        data = resp.json()
-        assert "total_orders" in data
-
-def test_owner_report_scoping():
-    resp = client.get("/reports/owner/orders")
-    assert resp.status_code in [200, 401, 403]
-    if resp.status_code == 200:
-        data = resp.json()
-        assert "total_orders" in data
-
-def test_admin_system_report_combined_filters():
-    today = date.today()
-    resp = client.get(f"/reports/admin/system?date_start={today}&date_end={today}&restaurant_id=test-restaurant")
-    assert resp.status_code in [200, 401, 403]
-    if resp.status_code == 200:
-        data = resp.json()
-        assert "orders" in data
+        # ...existing code...
         assert "deliveries" in data
         assert "payments" in data
-        assert "reviews" in data
-
-def test_owner_system_report_date_filter():
+    assert resp.status_code in [200, 401, 403]
+    from datetime import date
     today = date.today()
     resp = client.get(f"/reports/owner/system?date_start={today}&date_end={today}")
     assert resp.status_code in [200, 401, 403]
@@ -133,4 +99,4 @@ def test_owner_system_report_date_filter():
         assert "deliveries" in data
         assert "payments" in data
         assert "reviews" in data
->>>>>>> feat/10-B2-scoped-reports
+    resp = client.get("/reports/admin/orders?restaurant_id=test-restaurant")
