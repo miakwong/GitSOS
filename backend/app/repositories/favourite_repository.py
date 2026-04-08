@@ -61,6 +61,10 @@ def get_by_id(favourite_id: UUID) -> Optional[FavouriteRecord]:
     return None
 
 
+def get_all() -> list[FavouriteRecord]:
+    return [_dict_to_record(d) for d in _load()]
+
+
 def exists(customer_id: UUID, order_id: UUID) -> bool:
     for data in _load():
         if data["customer_id"] == str(customer_id) and data["order_id"] == str(order_id):

@@ -17,12 +17,12 @@ OTHER_CUSTOMER_ID = str(uuid.uuid4())
 ORDER_ID = uuid.uuid4()
 
 
-def make_order(order_id=None, customer_id=None):
+def make_order(order_id=None, customer_id=None, restaurant_id=16, food_item="Tacos"):
     return Order(
         order_id=order_id or ORDER_ID,
         customer_id=customer_id or CUSTOMER_ID,
-        restaurant_id=16,
-        food_item="Tacos",
+        restaurant_id=restaurant_id,
+        food_item=food_item,
         order_time=datetime.now(timezone.utc),
         order_value=20.0,
         delivery_distance=5.0,
@@ -218,3 +218,104 @@ class TestReorderFromFavourite:
         assert len(favs) == 1
         assert favs[0].favourite_id == str(fav_uuid)
         assert favs[0].order_id == str(ORDER_ID)
+
+
+class TestGetPopularItems:
+
+    def test_popular_items_returns_aggregated_counts(self):
+        from app.services import favourite_service
+
+        order1 = make_order(order_id=uuid.uuid4(), food_item="Tacos")
+        order2 = make_order(order_id=uuid.uuid4(), food_item="Tacos")
+        order3 = make_order(order_id=uuid.uuid4(), food_item="Pizza")
+
+        orders_map = {
+            str(order1.order_id): order1,
+            str(order2.order_id): order2,
+            str(order3.order_id): order3,
+        }
+
+        with patch.object(favourite_service._order_repo, "get_order_by_id", side_effect=lambda oid: orders_map.get(oid)):
+            favourite_service.add_favourite(FavouriteCreate(order_id=order1.order_id), CUSTOMER_ID)
+            favourite_service.add_favourite(FavouriteCreate(order_id=order2.order_id), OTHER_CUSTOMER_ID)
+            favourite_service.add_favourite(FavouriteCreate(order_id=order3.order_id), CUSTOMER_ID)
+
+        with patch.object(favourite_service._order_repo, "get_order_by_id", side_effect=lambda oid: orders_map.get(oid)):
+            results = favourite_service.get_popular_items()
+
+        assert len(results) == 2
+        assert results[0].food_item == "Tacos"
+        assert results[0].favourite_count == 2
+        assert results[1].food_item == "Pizza"
+        assert results[1].favourite_count == 1
+
+    def test_popular_items_scoped_by_restaurant(self):
+        from app.services import favourite_service
+
+        order1 = make_order(order_id=uuid.uuid4(), restaurant_id=16, food_item="Tacos")
+        order2 = make_order(order_id=uuid.uuid4(), restaurant_id=99, food_item="Sushi")
+
+        orders_map = {
+            str(order1.order_id): order1,
+            str(order2.order_id): order2,
+        }
+
+        with patch.object(favourite_service._order_repo, "get_order_by_id", side_effect=lambda oid: orders_map.get(oid)):
+            favourite_service.add_favourite(FavouriteCreate(order_id=order1.order_id), CUSTOMER_ID)
+            favourite_service.add_favourite(FavouriteCreate(order_id=order2.order_id), OTHER_CUSTOMER_ID)
+
+        with patch.object(favourite_service._order_repo, "get_order_by_id", side_effect=lambda oid: orders_map.get(oid)):
+            results = favourite_service.get_popular_items(restaurant_id=16)
+
+        assert len(results) == 1
+        assert results[0].food_item == "Tacos"
+        assert results[0].restaurant_id == 16
+
+    def test_popular_items_empty_dataset(self):
+        from app.services import favourite_service
+
+        results = favourite_service.get_popular_items()
+        assert results == []
+
+    def test_popular_items_sorted_descending(self):
+        from app.services import favourite_service
+
+        order1 = make_order(order_id=uuid.uuid4(), food_item="Burger")
+        order2 = make_order(order_id=uuid.uuid4(), food_item="Tacos")
+        order3 = make_order(order_id=uuid.uuid4(), food_item="Tacos")
+        order4 = make_order(order_id=uuid.uuid4(), food_item="Tacos")
+
+        orders_map = {
+            str(order1.order_id): order1,
+            str(order2.order_id): order2,
+            str(order3.order_id): order3,
+            str(order4.order_id): order4,
+        }
+
+        cust3 = str(uuid.uuid4())
+
+        with patch.object(favourite_service._order_repo, "get_order_by_id", side_effect=lambda oid: orders_map.get(oid)):
+            favourite_service.add_favourite(FavouriteCreate(order_id=order1.order_id), CUSTOMER_ID)
+            favourite_service.add_favourite(FavouriteCreate(order_id=order2.order_id), CUSTOMER_ID)
+            favourite_service.add_favourite(FavouriteCreate(order_id=order3.order_id), OTHER_CUSTOMER_ID)
+            favourite_service.add_favourite(FavouriteCreate(order_id=order4.order_id), cust3)
+
+        with patch.object(favourite_service._order_repo, "get_order_by_id", side_effect=lambda oid: orders_map.get(oid)):
+            results = favourite_service.get_popular_items()
+
+        assert results[0].favourite_count >= results[1].favourite_count
+        assert results[0].food_item == "Tacos"
+        assert results[0].favourite_count == 3
+
+    def test_popular_items_skips_deleted_orders(self):
+        from app.services import favourite_service
+
+        order = make_order(order_id=uuid.uuid4())
+
+        with patch.object(favourite_service._order_repo, "get_order_by_id", return_value=order):
+            favourite_service.add_favourite(FavouriteCreate(order_id=order.order_id), CUSTOMER_ID)
+
+        with patch.object(favourite_service._order_repo, "get_order_by_id", return_value=None):
+            results = favourite_service.get_popular_items()
+
+        assert results == []
