@@ -10,7 +10,7 @@ from app.schemas.reports import (
     SystemSummaryReport,
 )
 from app.schemas.order import OrderStatus
-from app.schemas.constants import PAYMENT_STATUS_SUCCESS, PAYMENT_STATUS_FAILED
+from app.schemas.constants import PAYMENT_STATUS_SUCCESS, PAYMENT_STATUS_FAILED, PAYMENT_STATUS_REFUNDED
 
 
 order_repo = OrderRepository()
@@ -20,10 +20,10 @@ def get_order_summary() -> OrderSummaryReport:
     all_orders = order_repo.get_all_orders()
     
     total_orders = len(all_orders)
-    completed_orders = sum(1 for o in all_orders if o.get("order_status") == OrderStatus.DELIVERED)
-    cancelled_orders = sum(1 for o in all_orders if o.get("order_status") == OrderStatus.CANCELLED)
-    pending_orders = sum(1 for o in all_orders if o.get("order_status") in [OrderStatus.PLACED, OrderStatus.PAID, OrderStatus.PREPARING])
-    total_revenue = sum(o.get("total_price", 0) for o in all_orders if o.get("order_status") == OrderStatus.DELIVERED)
+    completed_orders = sum(1 for o in all_orders if o.order_status == OrderStatus.DELIVERED)
+    cancelled_orders = sum(1 for o in all_orders if o.order_status == OrderStatus.CANCELLED)
+    pending_orders = sum(1 for o in all_orders if o.order_status in [OrderStatus.PLACED, OrderStatus.PAID, OrderStatus.PREPARING])
+    total_revenue = sum(o.order_value for o in all_orders if o.order_status == OrderStatus.DELIVERED)
     
     return OrderSummaryReport(
         total_orders=total_orders,
@@ -37,19 +37,19 @@ def get_order_summary() -> OrderSummaryReport:
 def get_delivery_summary() -> DeliverySummaryReport:
     all_orders = order_repo.get_all_orders()
     
-    completed_deliveries = sum(1 for o in all_orders if o.get("order_status") == OrderStatus.DELIVERED)
-    pending_deliveries = sum(1 for o in all_orders if o.get("order_status") in [OrderStatus.PLACED, OrderStatus.PAID, OrderStatus.PREPARING])
+    completed_deliveries = sum(1 for o in all_orders if o.order_status == OrderStatus.DELIVERED)
+    pending_deliveries = sum(1 for o in all_orders if o.order_status in [OrderStatus.PLACED, OrderStatus.PAID, OrderStatus.PREPARING])
     total_deliveries = completed_deliveries + pending_deliveries
     
     average_delivery_time = None
     if completed_deliveries > 0:
         total_time = 0
         for o in all_orders:
-            if o.get("order_status") == OrderStatus.DELIVERED:
-                if "created_at" in o and "delivery_time" in o:
+            if o.order_status == OrderStatus.DELIVERED:
+                if hasattr(o, 'created_at') and hasattr(o, 'delivery_time') and o.delivery_time:
                     try:
-                        created = datetime.fromisoformat(o["created_at"])
-                        delivered = datetime.fromisoformat(o["delivery_time"])
+                        created = o.created_at if isinstance(o.created_at, datetime) else datetime.fromisoformat(o.created_at)
+                        delivered = o.delivery_time if isinstance(o.delivery_time, datetime) else datetime.fromisoformat(o.delivery_time)
                         total_time += (delivered - created).total_seconds() / 60
                     except:
                         pass
@@ -70,7 +70,7 @@ def get_payment_summary() -> PaymentSummaryReport:
     successful_payments = sum(1 for p in all_payments if p.status == PAYMENT_STATUS_SUCCESS)
     failed_payments = sum(1 for p in all_payments if p.status == PAYMENT_STATUS_FAILED)
     total_revenue = sum(p.amount for p in all_payments if p.status == PAYMENT_STATUS_SUCCESS)
-    total_refunds = 0
+    total_refunds = sum(p.amount for p in all_payments if p.status == PAYMENT_STATUS_REFUNDED)
     
     return PaymentSummaryReport(
         total_transactions=total_transactions,
