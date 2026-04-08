@@ -345,28 +345,12 @@ class SearchService:
                     "order_id": str(r.get("order_id") or ""),
                     "customer_id": str(r.get("customer_id") or ""),
                     "restaurant_id": str(r.get("restaurant_id") or ""),
-                    "order_status": r.get("order_status"),
+                    "order_status": r.get("order_status") or "",
                     "order_value": _to_float(r.get("order_value")),
+                    "food_item": r.get("food_item") or "",
+                    "order_time": r.get("order_time") or "",
                 }
             )
-
-        # Also include system orders from orders.json
-        if _DEFAULT_SYSTEM_ORDERS_FILE.exists():
-            system_orders = json.loads(
-                _DEFAULT_SYSTEM_ORDERS_FILE.read_text(encoding="utf-8")
-            )
-            for r in system_orders:
-                orders.append(
-                    {
-                        "order_id": str(r.get("order_id") or ""),
-                        "customer_id": str(r.get("customer_id") or ""),
-                        "restaurant_id": str(r.get("restaurant_id") or ""),
-                        "order_status": r.get("order_status") or "",
-                        "order_value": _to_float(r.get("order_value")),
-                        "food_item": r.get("food_item") or "",
-                        "order_time": r.get("order_time") or "",
-                    }
-                )
 
         out = orders
 
