@@ -200,3 +200,115 @@ class TestRemoveFavouriteEndpoint:
         app.dependency_overrides[get_current_user] = lambda: MOCK_OWNER
         response = client.delete(f"/favourites/{uuid.uuid4()}")
         assert response.status_code == 403
+
+
+class TestReorderFromFavouriteEndpoint:
+
+    def test_reorder_success(self):
+        app.dependency_overrides[get_current_user] = lambda: MOCK_CUSTOMER
+        order = make_order()
+
+        with patch("app.services.favourite_service._order_repo") as mock_repo:
+            mock_repo.get_order_by_id.return_value = order
+            create_resp = client.post("/favourites/", json={"order_id": str(ORDER_ID)})
+
+        fav_id = create_resp.json()["favourite_id"]
+
+        new_order = make_order(order_id=uuid.uuid4())
+        with patch("app.services.favourite_service._order_repo") as mock_repo, \
+             patch("app.services.favourite_service._order_service") as mock_svc:
+            mock_repo.get_order_by_id.return_value = order
+            mock_svc.create_order.return_value = new_order
+            response = client.post(f"/favourites/{fav_id}/reorder")
+
+        assert response.status_code == 201
+        data = response.json()
+        assert data["order_id"] == str(new_order.order_id)
+        assert data["restaurant_id"] == order.restaurant_id
+        assert data["food_item"] == order.food_item
+
+    def test_reorder_favourite_not_found_returns_404(self):
+        app.dependency_overrides[get_current_user] = lambda: MOCK_CUSTOMER
+        response = client.post(f"/favourites/{uuid.uuid4()}/reorder")
+        assert response.status_code == 404
+
+    def test_reorder_wrong_customer_returns_403(self):
+        app.dependency_overrides[get_current_user] = lambda: MOCK_CUSTOMER
+        order = make_order()
+
+        with patch("app.services.favourite_service._order_repo") as mock_repo:
+            mock_repo.get_order_by_id.return_value = order
+            create_resp = client.post("/favourites/", json={"order_id": str(ORDER_ID)})
+
+        fav_id = create_resp.json()["favourite_id"]
+
+        app.dependency_overrides[get_current_user] = lambda: MOCK_OTHER_CUSTOMER
+        response = client.post(f"/favourites/{fav_id}/reorder")
+        assert response.status_code == 403
+
+    def test_reorder_non_customer_returns_403(self):
+        app.dependency_overrides[get_current_user] = lambda: MOCK_OWNER
+        response = client.post(f"/favourites/{uuid.uuid4()}/reorder")
+        assert response.status_code == 403
+
+    def test_reorder_original_order_missing_returns_404(self):
+        app.dependency_overrides[get_current_user] = lambda: MOCK_CUSTOMER
+        order = make_order()
+
+        with patch("app.services.favourite_service._order_repo") as mock_repo:
+            mock_repo.get_order_by_id.return_value = order
+            create_resp = client.post("/favourites/", json={"order_id": str(ORDER_ID)})
+
+        fav_id = create_resp.json()["favourite_id"]
+
+        with patch("app.services.favourite_service._order_repo") as mock_repo:
+            mock_repo.get_order_by_id.return_value = None
+            response = client.post(f"/favourites/{fav_id}/reorder")
+
+        assert response.status_code == 404
+        assert "no longer exists" in response.json()["detail"]
+
+    def test_reorder_does_not_modify_favourite(self):
+        app.dependency_overrides[get_current_user] = lambda: MOCK_CUSTOMER
+        order = make_order()
+
+        with patch("app.services.favourite_service._order_repo") as mock_repo:
+            mock_repo.get_order_by_id.return_value = order
+            create_resp = client.post("/favourites/", json={"order_id": str(ORDER_ID)})
+
+        fav_id = create_resp.json()["favourite_id"]
+
+        new_order = make_order(order_id=uuid.uuid4())
+        with patch("app.services.favourite_service._order_repo") as mock_repo, \
+             patch("app.services.favourite_service._order_service") as mock_svc:
+            mock_repo.get_order_by_id.return_value = order
+            mock_svc.create_order.return_value = new_order
+            client.post(f"/favourites/{fav_id}/reorder")
+
+        list_resp = client.get("/favourites/")
+        favs = list_resp.json()
+        assert len(favs) == 1
+        assert favs[0]["favourite_id"] == fav_id
+        assert favs[0]["order_id"] == str(ORDER_ID)
+
+    def test_reorder_creates_separate_order(self):
+        app.dependency_overrides[get_current_user] = lambda: MOCK_CUSTOMER
+        order = make_order()
+
+        with patch("app.services.favourite_service._order_repo") as mock_repo:
+            mock_repo.get_order_by_id.return_value = order
+            create_resp = client.post("/favourites/", json={"order_id": str(ORDER_ID)})
+
+        fav_id = create_resp.json()["favourite_id"]
+
+        new_order_id = uuid.uuid4()
+        new_order = make_order(order_id=new_order_id)
+        with patch("app.services.favourite_service._order_repo") as mock_repo, \
+             patch("app.services.favourite_service._order_service") as mock_svc:
+            mock_repo.get_order_by_id.return_value = order
+            mock_svc.create_order.return_value = new_order
+            response = client.post(f"/favourites/{fav_id}/reorder")
+
+        data = response.json()
+        assert data["order_id"] != str(ORDER_ID)
+        assert data["order_id"] == str(new_order_id)

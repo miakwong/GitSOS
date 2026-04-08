@@ -141,3 +141,80 @@ class TestRemoveFavourite:
         with pytest.raises(HTTPException) as exc_info:
             favourite_service.remove_favourite(fav_uuid, OTHER_CUSTOMER_ID)
         assert exc_info.value.status_code == 403
+
+
+class TestReorderFromFavourite:
+
+    def test_reorder_success(self):
+        from app.services import favourite_service
+
+        order = make_order()
+
+        with patch.object(favourite_service._order_repo, "get_order_by_id", return_value=order):
+            created = favourite_service.add_favourite(FavouriteCreate(order_id=ORDER_ID), CUSTOMER_ID)
+
+        fav_uuid = UUID(created.favourite_id)
+
+        with patch.object(favourite_service._order_repo, "get_order_by_id", return_value=order), \
+             patch.object(favourite_service._order_service, "create_order", return_value=make_order(order_id=uuid.uuid4())) as mock_create:
+            new_order = favourite_service.reorder_from_favourite(fav_uuid, CUSTOMER_ID)
+
+        assert new_order is not None
+        assert new_order.order_id != ORDER_ID
+        mock_create.assert_called_once()
+        call_arg = mock_create.call_args[0][0]
+        assert call_arg.restaurant_id == order.restaurant_id
+        assert call_arg.food_item == order.food_item
+        assert call_arg.delivery_method == order.delivery_method
+
+    def test_reorder_favourite_not_found(self):
+        from app.services import favourite_service
+
+        with pytest.raises(HTTPException) as exc_info:
+            favourite_service.reorder_from_favourite(uuid.uuid4(), CUSTOMER_ID)
+        assert exc_info.value.status_code == 404
+
+    def test_reorder_wrong_customer_denied(self):
+        from app.services import favourite_service
+
+        order = make_order()
+        with patch.object(favourite_service._order_repo, "get_order_by_id", return_value=order):
+            created = favourite_service.add_favourite(FavouriteCreate(order_id=ORDER_ID), CUSTOMER_ID)
+
+        fav_uuid = UUID(created.favourite_id)
+        with pytest.raises(HTTPException) as exc_info:
+            favourite_service.reorder_from_favourite(fav_uuid, OTHER_CUSTOMER_ID)
+        assert exc_info.value.status_code == 403
+
+    def test_reorder_original_order_deleted(self):
+        from app.services import favourite_service
+
+        order = make_order()
+        with patch.object(favourite_service._order_repo, "get_order_by_id", return_value=order):
+            created = favourite_service.add_favourite(FavouriteCreate(order_id=ORDER_ID), CUSTOMER_ID)
+
+        fav_uuid = UUID(created.favourite_id)
+
+        with patch.object(favourite_service._order_repo, "get_order_by_id", return_value=None):
+            with pytest.raises(HTTPException) as exc_info:
+                favourite_service.reorder_from_favourite(fav_uuid, CUSTOMER_ID)
+        assert exc_info.value.status_code == 404
+        assert "no longer exists" in exc_info.value.detail
+
+    def test_reorder_does_not_modify_original_favourite(self):
+        from app.services import favourite_service
+
+        order = make_order()
+        with patch.object(favourite_service._order_repo, "get_order_by_id", return_value=order):
+            created = favourite_service.add_favourite(FavouriteCreate(order_id=ORDER_ID), CUSTOMER_ID)
+
+        fav_uuid = UUID(created.favourite_id)
+
+        with patch.object(favourite_service._order_repo, "get_order_by_id", return_value=order), \
+             patch.object(favourite_service._order_service, "create_order", return_value=make_order(order_id=uuid.uuid4())):
+            favourite_service.reorder_from_favourite(fav_uuid, CUSTOMER_ID)
+
+        favs = favourite_service.get_favourites(CUSTOMER_ID)
+        assert len(favs) == 1
+        assert favs[0].favourite_id == str(fav_uuid)
+        assert favs[0].order_id == str(ORDER_ID)
