@@ -2,7 +2,7 @@ from uuid import UUID
 
 from app.dependencies import get_current_user
 from app.schemas.constants import ROLE_CUSTOMER
-from app.schemas.favourite import FavouriteCreate, FavouriteOut
+from app.schemas.favourite import FavouriteCreate, FavouriteOut, PopularItemOut
 from app.schemas.order import Order
 from app.schemas.user import UserInDB
 from app.services import favourite_service
@@ -34,6 +34,27 @@ def list_favourites(
             detail="Only customers can view favourites.",
         )
     return favourite_service.get_favourites(str(current_user.id))
+
+
+@router.get(
+    "/analytics/popular",
+    response_model=list[PopularItemOut],
+    summary="Get popular favourited menu items",
+    description="Returns menu items sorted by how often they are favourited. Owners see their restaurant only, admins see all.",
+)
+def get_popular_items(
+    current_user: UserInDB = Depends(get_current_user),
+) -> list[PopularItemOut]:
+    if current_user.role == ROLE_CUSTOMER:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Customers cannot access favourite analytics.",
+        )
+
+    if current_user.role == "owner":
+        return favourite_service.get_popular_items(restaurant_id=current_user.restaurant_id)
+
+    return favourite_service.get_popular_items()
 
 
 @router.post(

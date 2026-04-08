@@ -1,9 +1,11 @@
 import uuid
+from collections import Counter
+from typing import Optional
 from uuid import UUID
 
 from app.repositories import favourite_repository
 from app.repositories.order_repository import OrderRepository
-from app.schemas.favourite import FavouriteCreate, FavouriteOut, FavouriteRecord
+from app.schemas.favourite import FavouriteCreate, FavouriteOut, FavouriteRecord, PopularItemOut
 from app.schemas.order import Order, OrderCreate
 from app.services.order_service import OrderService
 from fastapi import HTTPException, status
@@ -94,3 +96,32 @@ def reorder_from_favourite(favourite_id: UUID, customer_id: str) -> Order:
 
     new_order = _order_service.create_order(order_data)
     return new_order
+
+
+def get_popular_items(restaurant_id: Optional[int] = None) -> list[PopularItemOut]:
+    all_favourites = favourite_repository.get_all()
+
+    # look up the order for each favourite to get food_item and restaurant_id
+    counts: Counter = Counter()
+    for fav in all_favourites:
+        order = _order_repo.get_order_by_id(str(fav.order_id))
+        if order is None:
+            continue
+
+        # if scoped to a restaurant, skip orders from other restaurants
+        if restaurant_id is not None and order.restaurant_id != restaurant_id:
+            continue
+
+        key = (order.food_item, order.restaurant_id)
+        counts[key] += 1
+
+    # build the result sorted by count descending
+    results = [
+        PopularItemOut(
+            food_item=food_item,
+            restaurant_id=rest_id,
+            favourite_count=count,
+        )
+        for (food_item, rest_id), count in counts.most_common()
+    ]
+    return results
