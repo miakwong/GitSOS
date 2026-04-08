@@ -76,6 +76,10 @@ def refund_payment(order_id: uuid.UUID) -> PaymentOut | None:
     return PaymentOut.from_record(updated)
 
 
+def list_all_payments() -> list[PaymentOut]:
+    return [PaymentOut.from_record(r) for r in payment_repository.list_all()]
+
+
 def get_refunded_payments() -> list[PaymentOut]:
     records = payment_repository.list_all()
     return [PaymentOut.from_record(r) for r in records if r.status == PAYMENT_STATUS_REFUNDED]
