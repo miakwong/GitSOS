@@ -37,7 +37,8 @@ def owner_system_report(
     date_end: Optional[date] = Query(None),
     owner=Depends(get_current_owner),
 ):
-    return report_service.get_system_summary(date_start, date_end, owner.restaurant_id)
+    _, rest_id = owner
+    return report_service.get_system_summary(date_start, date_end, rest_id)
 
 @router.get("/owner/orders", response_model=OrderSummaryReport)
 def owner_orders_report(
@@ -45,6 +46,7 @@ def owner_orders_report(
     date_end: Optional[date] = Query(None),
     owner=Depends(get_current_owner),
 ):
-    return report_service.get_order_summary(date_start, date_end, owner.restaurant_id)
+    _, rest_id = owner
+    return report_service.get_order_summary(date_start, date_end, rest_id)
 
 
