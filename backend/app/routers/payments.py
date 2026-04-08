@@ -34,6 +34,13 @@ def _check_payment_access(payment: PaymentOut, current_user: UserInDB) -> None:
         raise HTTPException(status_code=403, detail="Access denied")
 
 
+@router.get("/", response_model=list[PaymentOut])
+def list_all_payments(
+    _current_admin: UUID = Depends(get_current_admin),
+) -> list[PaymentOut]:
+    return payment_service.list_all_payments()
+
+
 @router.post("/", response_model=PaymentOut, status_code=201)
 def process_payment(
     payload: PaymentCreate,

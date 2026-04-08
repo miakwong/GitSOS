@@ -21,3 +21,4 @@ backend/.env
 # Database files
 backend/app/data/*.csv
 backend/app/data/*.json
+.coverage
