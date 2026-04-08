@@ -2,5 +2,13 @@
   {
     "restaurant_id": "R16",
     "name": "Admin Updated"
+  },
+  {
+    "restaurant_id": "R0",
+    "name": "The Test Kitchen",
+    "city": "Vancouver",
+    "cuisine": "International",
+    "description": "Owner's demo restaurant for GitSOS development.",
+    "image_url": null
   }
 ]
