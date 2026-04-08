@@ -585,6 +585,8 @@ class TestCancelOrderRefundTrigger:
 
         mocker.patch("app.routers.orders.order_service", order_service)
         mock_payment = mocker.patch("app.routers.orders.payment_service")
+        # Simulate a successful payment so was_paid resolves to True
+        mock_payment.get_payment_by_order.return_value.status = "Success"
 
         app.dependency_overrides[get_current_user] = lambda: MOCK_CUST_123
         try:
@@ -600,6 +602,8 @@ class TestCancelOrderRefundTrigger:
 
         mocker.patch("app.routers.orders.order_service", order_service)
         mock_payment = mocker.patch("app.routers.orders.payment_service")
+        # Simulate a successful payment so was_paid resolves to True
+        mock_payment.get_payment_by_order.return_value.status = "Success"
 
         app.dependency_overrides[get_current_user] = lambda: MOCK_CUST_123
         try:
@@ -613,7 +617,8 @@ class TestCancelOrderRefundTrigger:
         order_repo.update_order_status(str(uuid_sample_order.order_id), OrderStatus.PAID)
 
         mocker.patch("app.routers.orders.order_service", order_service)
-        mocker.patch("app.routers.orders.payment_service")
+        mock_payment = mocker.patch("app.routers.orders.payment_service")
+        mock_payment.get_payment_by_order.return_value.status = "Success"
 
         app.dependency_overrides[get_current_user] = lambda: MOCK_CUST_123
         try:
@@ -629,6 +634,7 @@ class TestCancelOrderRefundTrigger:
 
         mocker.patch("app.routers.orders.order_service", order_service)
         mock_payment = mocker.patch("app.routers.orders.payment_service")
+        mock_payment.get_payment_by_order.return_value.status = "Success"
         mock_payment.refund_payment.side_effect = ValueError("Simulated refund failure")
 
         app.dependency_overrides[get_current_user] = lambda: MOCK_CUST_123
