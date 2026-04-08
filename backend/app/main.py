@@ -1,4 +1,5 @@
 from app.routers import admin, auth, payments, restaurants
+from app.routers import reports
 from app.routers.delivery import router as delivery_router
 from app.routers.notifications import router as notifications_router
 from app.routers.orders import router as orders_router
@@ -31,3 +32,4 @@ app.include_router(delivery_router)
 app.include_router(pricing_router)
 app.include_router(notifications_router)
 app.include_router(reviews_router)
+app.include_router(reports.router)
