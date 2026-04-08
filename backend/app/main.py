@@ -1,6 +1,7 @@
 from app.routers import admin, auth, payments, restaurants
 from app.routers.reports import router as reports_router
 from app.routers.delivery import router as delivery_router
+from app.routers.favourites import router as favourites_router
 from app.routers.notifications import router as notifications_router
 from app.routers.orders import router as orders_router
 from app.routers.pricing_router import router as pricing_router
