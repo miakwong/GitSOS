@@ -50,14 +50,37 @@ def get_by_food_item(food_item: str) -> list[KaggleOrder]:
     return [_row_to_order(row) for row in _load_csv() if row["food_item"] == food_item]
 
 
-def get_median_price(food_item: str) -> Optional[float]:
-    """Get median price for a food item from Kaggle historical data."""
-    orders = get_by_food_item(food_item)
-    if not orders:
-        return None
-    prices = sorted([o.order_value for o in orders])
+def _median(prices: list[float]) -> float:
     n = len(prices)
     mid = n // 2
     if n % 2 == 0:
         return (prices[mid - 1] + prices[mid]) / 2
     return prices[mid]
+
+
+def get_median_price(restaurant_id: int, food_item: str) -> float:
+    """Three-tier price fallback:
+    1. Median price for this food_item at this restaurant.
+    2. Global median for this food_item across all restaurants.
+    3. Default $25.00 if food_item not in Kaggle at all.
+    """
+    rows = _load_csv()
+
+    # Tier 1: exact restaurant + food_item match
+    exact = sorted(
+        float(r["order_value"])
+        for r in rows
+        if r.get("food_item") == food_item and r.get("restaurant_id") == str(restaurant_id)
+    )
+    if exact:
+        return _median(exact)
+
+    # Tier 2: global food_item median
+    global_prices = sorted(
+        float(r["order_value"]) for r in rows if r.get("food_item") == food_item
+    )
+    if global_prices:
+        return _median(global_prices)
+
+    # Tier 3: default
+    return 25.00
