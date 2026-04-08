@@ -39,12 +39,20 @@ MOCK_OWNER = UserInDB(
 )
 
 
-def make_order(order_id=None, customer_id=None):
+MOCK_ADMIN = UserInDB(
+    id=UUID("dddddddd-dddd-dddd-dddd-dddddddddddd"),
+    email="admin@test.com",
+    role="admin",
+    password_hash="x",
+)
+
+
+def make_order(order_id=None, customer_id=None, restaurant_id=16, food_item="Tacos"):
     return Order(
         order_id=order_id or ORDER_ID,
         customer_id=customer_id or str(CUSTOMER_UUID),
-        restaurant_id=16,
-        food_item="Tacos",
+        restaurant_id=restaurant_id,
+        food_item=food_item,
         order_time=datetime.now(timezone.utc),
         order_value=20.0,
         delivery_distance=5.0,
@@ -312,3 +320,101 @@ class TestReorderFromFavouriteEndpoint:
         data = response.json()
         assert data["order_id"] != str(ORDER_ID)
         assert data["order_id"] == str(new_order_id)
+
+
+class TestPopularItemsEndpoint:
+
+    def test_owner_sees_only_their_restaurant(self):
+        app.dependency_overrides[get_current_user] = lambda: MOCK_CUSTOMER
+        order1 = make_order(order_id=uuid.uuid4(), restaurant_id=16, food_item="Tacos")
+        order2 = make_order(order_id=uuid.uuid4(), restaurant_id=99, food_item="Sushi")
+
+        orders_map = {str(order1.order_id): order1, str(order2.order_id): order2}
+
+        with patch("app.services.favourite_service._order_repo") as mock_repo:
+            mock_repo.get_order_by_id.side_effect = lambda oid: orders_map.get(oid)
+            client.post("/favourites/", json={"order_id": str(order1.order_id)})
+
+        app.dependency_overrides[get_current_user] = lambda: MOCK_OTHER_CUSTOMER
+        with patch("app.services.favourite_service._order_repo") as mock_repo:
+            mock_repo.get_order_by_id.side_effect = lambda oid: orders_map.get(oid)
+            client.post("/favourites/", json={"order_id": str(order2.order_id)})
+
+        app.dependency_overrides[get_current_user] = lambda: MOCK_OWNER
+        with patch("app.services.favourite_service._order_repo") as mock_repo:
+            mock_repo.get_order_by_id.side_effect = lambda oid: orders_map.get(oid)
+            response = client.get("/favourites/analytics/popular")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 1
+        assert data[0]["restaurant_id"] == 16
+
+    def test_admin_sees_all_restaurants(self):
+        app.dependency_overrides[get_current_user] = lambda: MOCK_CUSTOMER
+        order1 = make_order(order_id=uuid.uuid4(), restaurant_id=16, food_item="Tacos")
+        order2 = make_order(order_id=uuid.uuid4(), restaurant_id=99, food_item="Sushi")
+
+        orders_map = {str(order1.order_id): order1, str(order2.order_id): order2}
+
+        with patch("app.services.favourite_service._order_repo") as mock_repo:
+            mock_repo.get_order_by_id.side_effect = lambda oid: orders_map.get(oid)
+            client.post("/favourites/", json={"order_id": str(order1.order_id)})
+
+        app.dependency_overrides[get_current_user] = lambda: MOCK_OTHER_CUSTOMER
+        with patch("app.services.favourite_service._order_repo") as mock_repo:
+            mock_repo.get_order_by_id.side_effect = lambda oid: orders_map.get(oid)
+            client.post("/favourites/", json={"order_id": str(order2.order_id)})
+
+        app.dependency_overrides[get_current_user] = lambda: MOCK_ADMIN
+        with patch("app.services.favourite_service._order_repo") as mock_repo:
+            mock_repo.get_order_by_id.side_effect = lambda oid: orders_map.get(oid)
+            response = client.get("/favourites/analytics/popular")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 2
+
+    def test_customer_gets_403(self):
+        app.dependency_overrides[get_current_user] = lambda: MOCK_CUSTOMER
+        response = client.get("/favourites/analytics/popular")
+        assert response.status_code == 403
+
+    def test_empty_favourites_returns_empty_list(self):
+        app.dependency_overrides[get_current_user] = lambda: MOCK_ADMIN
+        response = client.get("/favourites/analytics/popular")
+        assert response.status_code == 200
+        assert response.json() == []
+
+    def test_results_sorted_descending(self):
+        app.dependency_overrides[get_current_user] = lambda: MOCK_CUSTOMER
+        order1 = make_order(order_id=uuid.uuid4(), food_item="Burger")
+        order2 = make_order(order_id=uuid.uuid4(), food_item="Tacos")
+        order3 = make_order(order_id=uuid.uuid4(), food_item="Tacos")
+
+        orders_map = {
+            str(order1.order_id): order1,
+            str(order2.order_id): order2,
+            str(order3.order_id): order3,
+        }
+
+        with patch("app.services.favourite_service._order_repo") as mock_repo:
+            mock_repo.get_order_by_id.side_effect = lambda oid: orders_map.get(oid)
+            client.post("/favourites/", json={"order_id": str(order1.order_id)})
+            client.post("/favourites/", json={"order_id": str(order2.order_id)})
+
+        app.dependency_overrides[get_current_user] = lambda: MOCK_OTHER_CUSTOMER
+        with patch("app.services.favourite_service._order_repo") as mock_repo:
+            mock_repo.get_order_by_id.side_effect = lambda oid: orders_map.get(oid)
+            client.post("/favourites/", json={"order_id": str(order3.order_id)})
+
+        app.dependency_overrides[get_current_user] = lambda: MOCK_ADMIN
+        with patch("app.services.favourite_service._order_repo") as mock_repo:
+            mock_repo.get_order_by_id.side_effect = lambda oid: orders_map.get(oid)
+            response = client.get("/favourites/analytics/popular")
+
+        data = response.json()
+        assert data[0]["food_item"] == "Tacos"
+        assert data[0]["favourite_count"] == 2
+        assert data[1]["food_item"] == "Burger"
+        assert data[1]["favourite_count"] == 1
