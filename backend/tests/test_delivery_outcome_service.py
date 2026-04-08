@@ -19,7 +19,7 @@ from app.schemas.order import (
 from app.schemas.user import UserInDB
 from app.services.delivery_service import DeliveryService
 
-
+# tests for recording delivery outcomes, covering authentication, authorization, validation, and business rules around when outcomes can be recorded and how they affect order data
 def make_customer(uid: str = None) -> UserInDB:
     return UserInDB(
         id=uuid.UUID(uid) if uid else uuid.uuid4(),
