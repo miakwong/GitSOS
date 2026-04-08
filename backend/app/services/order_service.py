@@ -34,6 +34,7 @@ class OrderService:
         kaggle_customers = self.kaggle_repo.get_customers()
         if customer_id in kaggle_customers:
             return
+        self.user_repo._load_users()
         system_user = self.user_repo.get_user_by_id_str(customer_id)
         if system_user is not None:
             return

@@ -1,25 +1,25 @@
 # GitSOS
-Food delivery platform (COSC 310) — FastAPI REST API + frontend (M4), Docker, auth/roles, Pytest, CI
+Food delivery platform (COSC 310) — FastAPI REST API + Next.js frontend, Docker, auth/roles, pytest, CI
 
 ## Getting Started
 
-### 1. Start the backend
+### Run the full stack (backend + frontend)
 
 ```bash
-docker-compose up --build
+docker compose up --build
 ```
 
-API runs at http://localhost:8000. Docs at http://localhost:8000/docs.
+- Frontend: http://localhost:3000
+- Backend API: http://localhost:8000
+- API docs: http://localhost:8000/docs
 
-### 2. Seed test users
+### Test accounts
 
-User data is not tracked in git. Run this once after starting the container to create local test accounts:
+Register a new account at http://localhost:3000/register, or use the seed script to create test accounts:
 
 ```bash
 python backend/scripts/seed_users.py
 ```
-
-This creates three accounts (skips any that already exist):
 
 | Email | Password | Role |
 |-------|----------|------|
@@ -27,7 +27,7 @@ This creates three accounts (skips any that already exist):
 | owner@test.com | Owner1234 | owner (restaurant 0) |
 | customer@test.com | Customer1234 | customer |
 
-### 3. Run tests
+### Run tests
 
 ```bash
 cd backend && pytest
