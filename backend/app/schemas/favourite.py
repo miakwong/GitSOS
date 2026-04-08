@@ -18,6 +18,12 @@ class FavouriteRecord(BaseModel):
     )
 
 
+class PopularItemOut(BaseModel):
+    food_item: str
+    restaurant_id: int
+    favourite_count: int
+
+
 class FavouriteOut(BaseModel):
     favourite_id: str
     order_id: str
