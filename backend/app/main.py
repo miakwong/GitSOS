@@ -3,6 +3,7 @@ from app.routers.delivery import router as delivery_router
 from app.routers.notifications import router as notifications_router
 from app.routers.orders import router as orders_router
 from app.routers.pricing_router import router as pricing_router
+from app.routers.reviews import router as reviews_router
 from app.routers.search_router import router as search_router
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -38,3 +39,4 @@ app.include_router(admin.router)
 app.include_router(delivery_router)
 app.include_router(pricing_router)
 app.include_router(notifications_router)
+app.include_router(reviews_router)
