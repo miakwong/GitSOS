@@ -90,7 +90,12 @@ export default function Navbar() {
               Favourites
             </Link>
           )}
-{user?.role === "owner" && (
+          {user?.role === "customer" && (
+            <Link href="/reviews" className="text-sm text-gray-600 hover:text-gray-900">
+              Reviews
+            </Link>
+          )}
+          {user?.role === "owner" && (
             <Link href="/owner" className="text-sm text-orange-600 font-medium hover:text-orange-800">
               Dashboard
             </Link>
