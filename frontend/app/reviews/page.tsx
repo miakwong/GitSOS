@@ -77,7 +77,7 @@ export default function ReviewsPage() {
                 <option value="">Select a delivered order…</option>
                 {orders.map((o) => (
                   <option key={o.order_id} value={o.order_id}>
-                    {o.food_item} — Restaurant #{o.restaurant_id} (#{o.order_id.slice(0, 8)})
+                    {o.food_item} — Restaurant #{o.restaurant_id} (#{o.order_id.slice(-8)})
                   </option>
                 ))}
               </select>

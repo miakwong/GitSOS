@@ -415,7 +415,7 @@ export default function OwnerDashboardPage() {
                   {activeOrders.map((o) => (
                     <TableRow key={o.order_id}>
                       <TableCell className="text-xs font-mono text-gray-400">
-                        {o.order_id.slice(0, 8)}
+                        {o.order_id.slice(-8)}
                       </TableCell>
                       <TableCell className="text-xs font-mono text-gray-400">
                         {o.customer_id.slice(0, 8)}
@@ -486,7 +486,7 @@ export default function OwnerDashboardPage() {
                   {orders.map((o) => (
                     <TableRow key={o.order_id}>
                       <TableCell className="text-xs font-mono text-gray-400">
-                        {o.order_id.slice(0, 8)}
+                        {o.order_id.slice(-8)}
                       </TableCell>
                       <TableCell className="text-xs font-mono text-gray-400">
                         {o.customer_id.slice(0, 8)}
@@ -550,7 +550,7 @@ export default function OwnerDashboardPage() {
                   {cancelledOrders.map((o) => (
                     <TableRow key={o.order_id}>
                       <TableCell className="text-xs font-mono text-gray-400">
-                        {o.order_id.slice(0, 8)}
+                        {o.order_id.slice(-8)}
                       </TableCell>
                       <TableCell className="text-xs font-mono text-gray-400">
                         {o.customer_id.slice(0, 8)}
@@ -601,7 +601,7 @@ export default function OwnerDashboardPage() {
                     return (
                       <TableRow key={d.order_id}>
                         <TableCell className="text-xs font-mono text-gray-400">
-                          {d.order_id.length > 8 ? d.order_id.slice(0, 8) : d.order_id}
+                          {d.order_id.length > 8 ? d.order_id.slice(-8) : d.order_id}
                         </TableCell>
                         <TableCell>{d.delivery_distance.toFixed(1)} km</TableCell>
                         <TableCell>{d.delivery_method ?? "—"}</TableCell>

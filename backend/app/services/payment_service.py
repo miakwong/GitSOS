@@ -1,7 +1,12 @@
 import uuid
 
 from app.repositories import payment_repository
-from app.schemas.constants import PAYMENT_REQUIRED_ORDER_STATUS, PAYMENT_STATUS_REFUNDED, PAYMENT_STATUS_SUCCESS
+from app.schemas.constants import (
+    PAYMENT_REQUIRED_ORDER_STATUS,
+    PAYMENT_STATUS_REFUNDED,
+    PAYMENT_STATUS_SUCCESS,
+)
+from app.schemas.order import OrderStatus
 from app.schemas.payment import PaymentCreate, PaymentOut, PaymentRecord
 from app.services.order_service import OrderService
 
@@ -39,6 +44,10 @@ def process_payment(payload: PaymentCreate) -> PaymentOut:
         amount=amount,
     )
     saved = payment_repository.create(record)
+
+    # Advance order status to Paid
+    _order_service.admin_override_status(str(order_id), OrderStatus.PAID)
+
     return PaymentOut.from_record(saved)
 
 
@@ -82,4 +91,8 @@ def list_all_payments() -> list[PaymentOut]:
 
 def get_refunded_payments() -> list[PaymentOut]:
     records = payment_repository.list_all()
-    return [PaymentOut.from_record(r) for r in records if r.status == PAYMENT_STATUS_REFUNDED]
+    return [
+        PaymentOut.from_record(r)
+        for r in records
+        if r.status == PAYMENT_STATUS_REFUNDED
+    ]

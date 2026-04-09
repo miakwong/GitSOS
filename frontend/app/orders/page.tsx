@@ -80,6 +80,12 @@ const DELIVERY_METHODS = ["Walk", "Bike", "Car"];
 const TRAFFIC_CONDITIONS = ["Low", "Medium", "High"];
 const WEATHER_CONDITIONS = ["Sunny", "Rainy", "Snowy"];
 
+const REVIEW_TAGS = [
+  "Delicious", "Just okay", "Disappointing",
+  "Fast delivery", "On time", "Late delivery",
+  "Great value", "Overpriced",
+];
+
 export default function OrdersPage() {
   const router = useRouter();
   const [orders, setOrders] = useState<Order[]>([]);
@@ -104,6 +110,13 @@ export default function OrdersPage() {
   const [savingFavourite, setSavingFavourite] = useState<string | null>(null);
   const [savedFavourites, setSavedFavourites] = useState<Set<string>>(new Set());
   const [favouriteMessage, setFavouriteMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [submittedReviews, setSubmittedReviews] = useState<Record<string, { rating: number; tags: string[] }>>(() => {
+    try { return JSON.parse(localStorage.getItem("submitted_reviews") || "{}"); } catch { return {}; }
+  });
+  const [reviewForms, setReviewForms] = useState<Record<string, { rating: number; tags: string[] }>>({});
+  const [reviewExpanded, setReviewExpanded] = useState<string | null>(null);
+  const [submittingReview, setSubmittingReview] = useState<string | null>(null);
+  const [reviewError, setReviewError] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!isLoggedIn()) { router.push("/login"); return; }
@@ -197,6 +210,9 @@ export default function OrdersPage() {
     try {
       const { data: p } = await api.post("/payments/", { order_id: order.order_id });
       setPayments((prev) => ({ ...prev, [order.order_id]: p }));
+      setOrders((prev) =>
+        prev.map((o) => o.order_id === order.order_id ? { ...o, order_status: "Paid" } : o)
+      );
       window.dispatchEvent(new Event("notifications-refresh"));
     } catch {
       api.get(`/payments/order/${order.order_id}`)
@@ -260,6 +276,43 @@ export default function OrdersPage() {
     }
   }
 
+  function toggleReviewTag(orderId: string, tag: string) {
+    setReviewForms((prev) => {
+      const form = prev[orderId] ?? { rating: 5, tags: [] };
+      const tags = form.tags.includes(tag) ? form.tags.filter((t) => t !== tag) : [...form.tags, tag];
+      return { ...prev, [orderId]: { ...form, tags } };
+    });
+  }
+
+  function setReviewRating(orderId: string, rating: number) {
+    setReviewForms((prev) => ({ ...prev, [orderId]: { ...(prev[orderId] ?? { tags: [] }), rating } }));
+  }
+
+  async function submitReview(orderId: string) {
+    const form = reviewForms[orderId] ?? { rating: 5, tags: [] };
+    setSubmittingReview(orderId);
+    setReviewError((prev) => ({ ...prev, [orderId]: "" }));
+    const saveReview = () => {
+      const updated = { ...submittedReviews, [orderId]: { rating: form.rating, tags: form.tags } };
+      setSubmittedReviews(updated);
+      localStorage.setItem("submitted_reviews", JSON.stringify(updated));
+      setReviewExpanded(null);
+    };
+    try {
+      await api.post("/reviews/", { order_id: orderId, rating: form.rating, tags: form.tags });
+      saveReview();
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      if (typeof msg === "string" && msg.toLowerCase().includes("already")) {
+        saveReview();
+      } else {
+        setReviewError((prev) => ({ ...prev, [orderId]: typeof msg === "string" ? msg : "Failed to submit review." }));
+      }
+    } finally {
+      setSubmittingReview(null);
+    }
+  }
+
   const user = isLoggedIn() ? getUser() : null;
   const isCustomer = user?.role === "customer";
 
@@ -278,7 +331,7 @@ export default function OrdersPage() {
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
             <h2 className="text-lg font-bold mb-4">Edit Order</h2>
-            <p className="text-xs text-gray-400 mb-4">#{editingOrder.order_id.slice(0, 8)} — Only orders in &quot;Placed&quot; status can be edited.</p>
+            <p className="text-xs text-gray-400 mb-4">#{editingOrder.order_id.slice(-8)} — Only orders in &quot;Placed&quot; status can be edited.</p>
             {editError && (
               <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-sm">{editError}</div>
             )}
@@ -344,7 +397,7 @@ export default function OrdersPage() {
               <Card key={o.order_id}>
                 <CardHeader className="pb-2 flex flex-row items-center justify-between">
                   <CardTitle className="text-sm font-medium text-gray-500">
-                    #{o.order_id.slice(0, 8)}
+                    #{o.order_id.slice(-8)}
                   </CardTitle>
                   <div className="flex items-center gap-1.5">
                     {payment && (
@@ -454,6 +507,65 @@ export default function OrdersPage() {
                     <p className="text-xs text-purple-600 font-medium mt-1">
                       Refund of ${payment.amount?.toFixed(2)} processed after cancellation.
                     </p>
+                  )}
+
+                  {/* Inline Review — Delivered orders only */}
+                  {isCustomer && o.order_status === "Delivered" && (
+                    <div className="mt-3 border-t pt-3">
+                      {submittedReviews[o.order_id] ? (
+                        <div>
+                          <p className="text-xs font-medium text-gray-600 mb-1">Your review</p>
+                          <div className="flex items-center gap-1 mb-1">
+                            {[1,2,3,4,5].map((n) => (
+                              <span key={n} className={`text-base ${n <= submittedReviews[o.order_id].rating ? "text-orange-400" : "text-gray-200"}`}>★</span>
+                            ))}
+                            <span className="text-xs text-gray-500 ml-1">{submittedReviews[o.order_id].rating}/5</span>
+                          </div>
+                          {submittedReviews[o.order_id].tags.length > 0 && (
+                            <div className="flex flex-wrap gap-1">
+                              {submittedReviews[o.order_id].tags.map((tag) => (
+                                <span key={tag} className="text-xs px-2 py-0.5 bg-orange-50 border border-orange-200 rounded-full text-orange-700">{tag}</span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ) : reviewExpanded === o.order_id ? (
+                        <div className="space-y-2">
+                          <p className="text-xs font-medium text-gray-700">Rate this order</p>
+                          <div className="flex gap-1">
+                            {[1,2,3,4,5].map((n) => (
+                              <button key={n} type="button" onClick={() => setReviewRating(o.order_id, n)}
+                                className={`text-xl transition-transform ${n <= (reviewForms[o.order_id]?.rating ?? 5) ? "scale-110" : "opacity-30"}`}>
+                                ⭐
+                              </button>
+                            ))}
+                          </div>
+                          <div className="flex flex-wrap gap-1">
+                            {REVIEW_TAGS.map((tag) => {
+                              const selected = (reviewForms[o.order_id]?.tags ?? []).includes(tag);
+                              return (
+                                <button key={tag} type="button" onClick={() => toggleReviewTag(o.order_id, tag)}
+                                  className={`text-xs px-2 py-1 rounded-full border transition-colors ${selected ? "bg-orange-500 text-white border-orange-500" : "bg-white text-gray-600 border-gray-300 hover:border-orange-400"}`}>
+                                  {tag}
+                                </button>
+                              );
+                            })}
+                          </div>
+                          {reviewError[o.order_id] && <p className="text-xs text-red-500">{reviewError[o.order_id]}</p>}
+                          <div className="flex gap-2">
+                            <Button size="sm" className="bg-orange-500 hover:bg-orange-600 text-white"
+                              disabled={submittingReview === o.order_id} onClick={() => submitReview(o.order_id)}>
+                              {submittingReview === o.order_id ? "Submitting…" : "Submit"}
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => setReviewExpanded(null)}>Cancel</Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <Button size="sm" variant="outline" onClick={() => setReviewExpanded(o.order_id)}>
+                          Leave a review
+                        </Button>
+                      )}
+                    </div>
                   )}
                 </CardContent>
               </Card>

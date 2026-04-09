@@ -87,7 +87,8 @@ const PAYMENT_COLORS: Record<string, string> = {
 };
 
 const NEXT_STATUS: Record<string, string | null> = {
-  Placed: "Preparing",
+  Placed: "Paid",
+  Paid: "Preparing",
   Preparing: "Delivered",
   Delivered: null,
   Cancelled: null,
@@ -469,7 +470,7 @@ export default function AdminPage() {
                   {orders.map((o) => (
                     <TableRow key={o.order_id}>
                       <TableCell className="text-xs text-gray-400 font-mono">
-                        {o.order_id.slice(0, 8)}
+                        {o.order_id.slice(-8)}
                       </TableCell>
                       <TableCell>{o.food_item}</TableCell>
                       <TableCell>#{o.restaurant_id}</TableCell>
@@ -534,7 +535,7 @@ export default function AdminPage() {
                   {cancelledOrders.map((o) => (
                     <TableRow key={o.order_id}>
                       <TableCell className="text-xs text-gray-400 font-mono">
-                        {o.order_id.slice(0, 8)}
+                        {o.order_id.slice(-8)}
                       </TableCell>
                       <TableCell>{o.food_item}</TableCell>
                       <TableCell>#{o.restaurant_id}</TableCell>
@@ -584,7 +585,7 @@ export default function AdminPage() {
                   {refundedPayments.map((p) => (
                     <TableRow key={p.payment_id}>
                       <TableCell className="text-xs font-mono">{p.payment_id.slice(0, 8)}</TableCell>
-                      <TableCell className="text-xs font-mono">{p.order_id.slice(0, 8)}</TableCell>
+                      <TableCell className="text-xs font-mono">{p.order_id.slice(-8)}</TableCell>
                       <TableCell className="text-xs font-mono">{p.customer_id.slice(0, 8)}</TableCell>
                       <TableCell>${p.amount?.toFixed(2)}</TableCell>
                       <TableCell>
@@ -628,7 +629,7 @@ export default function AdminPage() {
                         {p.payment_id.slice(0, 8)}
                       </TableCell>
                       <TableCell className="text-xs font-mono">
-                        {p.order_id.slice(0, 8)}
+                        {p.order_id.slice(-8)}
                       </TableCell>
                       <TableCell className="text-xs font-mono">
                         {p.customer_id.slice(0, 8)}
@@ -847,7 +848,7 @@ export default function AdminPage() {
                     return (
                       <TableRow key={d.order_id}>
                         <TableCell className="text-xs font-mono">
-                          {d.order_id.length > 8 ? d.order_id.slice(0, 8) : d.order_id}
+                          {d.order_id.length > 8 ? d.order_id.slice(-8) : d.order_id}
                         </TableCell>
                         <TableCell>{d.delivery_distance.toFixed(1)} km</TableCell>
                         <TableCell>{d.delivery_method ?? "—"}</TableCell>
