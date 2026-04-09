@@ -180,6 +180,6 @@ GitHub usernames with admin access: **Anubhav2806**, **TWright-28**
 | Name | GitHub Username |
 |------|----------------|
 | Mia Kuang | miakwong |
-| Kianan B | Kiananb |
+| Kiana Nazembokaei | Kiananb |
 | Mason Liu | mason-liuuu |
 | Nikki Sidhu | msidhu21 |
