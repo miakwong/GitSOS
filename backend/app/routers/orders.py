@@ -2,7 +2,13 @@
 from uuid import UUID
 
 from app.dependencies import get_current_admin, get_current_owner, get_current_user
-from app.schemas.order import Order, OrderCreate, OrderStatus, OrderStatusUpdate, OrderUpdate
+from app.schemas.order import (
+    Order,
+    OrderCreate,
+    OrderStatus,
+    OrderStatusUpdate,
+    OrderUpdate,
+)
 from app.schemas.user import UserInDB
 from app.services import payment_service
 from app.services.notification_service import NotificationService
@@ -143,9 +149,11 @@ def owner_update_order_status(
     current_owner: tuple[UUID, int] = Depends(get_current_owner),
 ) -> Order:
     _, rest_id = current_owner
-    return order_service.advance_order_status(
+    order = order_service.advance_order_status(
         order_id, status_update.order_status, rest_id
     )
+    _notif_service.notify_order_status_changed(order)
+    return order
 
 
 # Admin can override order status without following normal transition rules
@@ -160,7 +168,9 @@ def admin_update_order_status(
     status_update: OrderStatusUpdate,
     _current_admin: UUID = Depends(get_current_admin),
 ) -> Order:
-    return order_service.admin_override_status(order_id, status_update.order_status)
+    order = order_service.admin_override_status(order_id, status_update.order_status)
+    _notif_service.notify_order_status_changed(order)
+    return order
 
 
 # Admin can views all cancelled orders across the system

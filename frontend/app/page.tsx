@@ -13,6 +13,7 @@ export default function Home() {
     const user = getUser();
     if (user?.role === "owner") router.replace("/owner");
     else if (user?.role === "admin") router.replace("/admin");
+    else if (user) router.replace("/search");
   }, [router]);
 
   return (

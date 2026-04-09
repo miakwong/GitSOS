@@ -143,7 +143,7 @@ export default function FavouritesPage() {
     setError("");
     try {
       const { data: newOrder } = await api.post<Order>(`/favourites/${favouriteId}/reorder`);
-      setSuccessMessage(`New order created! Order #${newOrder.order_id.slice(0, 8)}`);
+      setSuccessMessage(`New order created! Order #${newOrder.order_id.slice(-8)}`);
       window.dispatchEvent(new Event("notifications-refresh"));
       setTimeout(() => {
         setSuccessMessage("");
@@ -252,7 +252,7 @@ export default function FavouritesPage() {
                           </span>
                         </div>
                         <p className="text-xs text-gray-400">
-                          Original order: #{order.order_id.slice(0, 8)} ·{" "}
+                          Original order: #{order.order_id.slice(-8)} ·{" "}
                           {new Date(order.order_time).toLocaleString()}
                         </p>
                         <div className="flex gap-2 pt-2">
@@ -277,7 +277,7 @@ export default function FavouritesPage() {
                     ) : (
                       <div className="text-gray-400 text-sm">
                         <p>Order details unavailable.</p>
-                        <p className="text-xs mt-1">Order ID: {fav.order_id.slice(0, 8)}</p>
+                        <p className="text-xs mt-1">Order ID: {fav.order_id.slice(-8)}</p>
                         <Button
                           size="sm"
                           variant="outline"

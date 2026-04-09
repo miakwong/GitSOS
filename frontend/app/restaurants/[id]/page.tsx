@@ -15,6 +15,14 @@ interface MenuItem {
   price: number;
 }
 
+interface ReviewSummary {
+  restaurant_id: number;
+  average_rating: number;
+  review_count: number;
+  tag_counts: Record<string, number>;
+  reviews: { review_id: string; rating: number; tags: string[] }[];
+}
+
 export default function RestaurantDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
@@ -28,6 +36,7 @@ export default function RestaurantDetailPage() {
   const [ordering, setOrdering] = useState<string | null>(null);
   const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
+  const [reviewSummary, setReviewSummary] = useState<ReviewSummary | null>(null);
 
   async function fetchMenu(category = selectedCategory, sort = sortBy, order = sortOrder) {
     setLoading(true);
@@ -59,6 +68,10 @@ export default function RestaurantDetailPage() {
         setCategories(unique);
       })
       .finally(() => setLoading(false));
+
+    api.get(`/reviews/restaurant/${id}`)
+      .then(({ data }) => setReviewSummary(data))
+      .catch(() => {});
   }, [id]);
 
   async function placeOrder(item: MenuItem) {
@@ -103,6 +116,28 @@ export default function RestaurantDetailPage() {
       </button>
 
       <h1 className="text-2xl font-bold mb-2">Restaurant #{id}</h1>
+
+      {reviewSummary && reviewSummary.review_count > 0 && (
+        <div className="mb-4 p-4 bg-orange-50 border border-orange-100 rounded-lg">
+          <div className="flex items-center gap-3 mb-2">
+            <span className="text-2xl font-bold text-orange-500">{reviewSummary.average_rating.toFixed(1)}</span>
+            <span className="text-orange-400">{"⭐".repeat(Math.round(reviewSummary.average_rating))}</span>
+            <span className="text-sm text-gray-500">({reviewSummary.review_count} review{reviewSummary.review_count !== 1 ? "s" : ""})</span>
+          </div>
+          {Object.keys(reviewSummary.tag_counts).length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {Object.entries(reviewSummary.tag_counts)
+                .sort((a, b) => b[1] - a[1])
+                .map(([tag, count]) => (
+                  <span key={tag} className="text-xs px-2 py-0.5 bg-white border border-orange-200 rounded-full text-gray-600">
+                    {tag} · {count}
+                  </span>
+                ))}
+            </div>
+          )}
+        </div>
+      )}
+
       <p className="text-gray-500 text-sm mb-4">Select an item to place an order</p>
 
       {/* Filters & sorting */}
