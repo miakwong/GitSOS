@@ -19,10 +19,29 @@ export default function RestaurantDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const [items, setItems] = useState<MenuItem[]>([]);
+  const [allItems, setAllItems] = useState<MenuItem[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [sortBy, setSortBy] = useState("item_name");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [loading, setLoading] = useState(true);
   const [ordering, setOrdering] = useState<string | null>(null);
   const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
+
+  async function fetchMenu(category = selectedCategory, sort = sortBy, order = sortOrder) {
+    setLoading(true);
+    try {
+      const params: Record<string, string | number> = { restaurant_id: id, page_size: 100, sort_by: sort, sort_order: order };
+      if (category) params.category = category;
+      const { data } = await api.get("/search/menu-items", { params });
+      setItems(data.data || []);
+    } catch {
+      // keep showing existing items on error
+    } finally {
+      setLoading(false);
+    }
+  }
 
   useEffect(() => {
     const user = getUser();
@@ -30,9 +49,15 @@ export default function RestaurantDetailPage() {
       router.replace("/");
       return;
     }
-    api
-      .get("/search/menu-items", { params: { restaurant_id: id, page_size: 100 } })
-      .then(({ data }) => setItems(data.data || []))
+    // Load all items once to extract unique categories
+    api.get("/search/menu-items", { params: { restaurant_id: id, page_size: 100 } })
+      .then(({ data }) => {
+        const all: MenuItem[] = data.data || [];
+        setAllItems(all);
+        setItems(all);
+        const unique = [...new Set(all.map((i) => i.category).filter(Boolean))].sort();
+        setCategories(unique);
+      })
       .finally(() => setLoading(false));
   }, [id]);
 
@@ -78,7 +103,52 @@ export default function RestaurantDetailPage() {
       </button>
 
       <h1 className="text-2xl font-bold mb-2">Restaurant #{id}</h1>
-      <p className="text-gray-500 text-sm mb-6">Select an item to place an order</p>
+      <p className="text-gray-500 text-sm mb-4">Select an item to place an order</p>
+
+      {/* Filters & sorting */}
+      {!loading && (
+        <div className="flex flex-wrap gap-3 mb-6 items-end">
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">Cuisine</label>
+            <select
+              value={selectedCategory}
+              onChange={(e) => {
+                const cat = e.target.value;
+                setSelectedCategory(cat);
+                if (cat) {
+                  setItems(allItems.filter((i) => i.category === cat));
+                } else {
+                  fetchMenu("", sortBy, sortOrder);
+                }
+              }}
+              className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+            >
+              <option value="">All cuisines</option>
+              {categories.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">Sort by</label>
+            <select
+              value={sortBy}
+              onChange={(e) => { setSortBy(e.target.value); fetchMenu(selectedCategory, e.target.value, sortOrder); }}
+              className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+            >
+              <option value="item_name">Name</option>
+              <option value="price">Price</option>
+            </select>
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">Order</label>
+            <button
+              onClick={() => { const o = sortOrder === "asc" ? "desc" : "asc"; setSortOrder(o); fetchMenu(selectedCategory, sortBy, o); }}
+              className="h-10 px-3 rounded-md border border-input bg-background text-sm hover:bg-gray-50"
+            >
+              {sortOrder === "asc" ? "↑ Asc" : "↓ Desc"}
+            </button>
+          </div>
+        </div>
+      )}
 
       {success && (
         <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded text-green-700 text-sm">

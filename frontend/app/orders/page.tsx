@@ -38,6 +38,22 @@ interface DeliveryInfo {
   is_historical: boolean;
 }
 
+interface PriceBreakdown {
+  order_id: string;
+  food_price: number;
+  delivery_fee: {
+    base_fee: number;
+    distance_fee: number;
+    method_surcharge: number;
+    traffic_surcharge: number;
+    weather_surcharge: number;
+    total_delivery_fee: number;
+  };
+  subtotal: number;
+  tax: number;
+  total: number;
+}
+
 const STATUS_COLORS: Record<string, string> = {
   Placed: "bg-blue-100 text-blue-700",
   Paid: "bg-indigo-100 text-indigo-700",
@@ -47,9 +63,17 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 const PAYMENT_COLORS: Record<string, string> = {
-  pending: "text-yellow-600",
-  completed: "text-green-600",
-  failed: "text-red-600",
+  Success: "bg-green-100 text-green-700",
+  Pending: "bg-yellow-100 text-yellow-700",
+  Failed: "bg-red-100 text-red-700",
+  Refunded: "bg-purple-100 text-purple-700",
+};
+
+const PAYMENT_LABELS: Record<string, string> = {
+  Success: "Paid",
+  Pending: "Payment pending",
+  Failed: "Payment failed",
+  Refunded: "Refunded",
 };
 
 const DELIVERY_METHODS = ["Walk", "Bike", "Car"];
@@ -61,9 +85,11 @@ export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [payments, setPayments] = useState<Record<string, Payment>>({});
   const [deliveryInfos, setDeliveryInfos] = useState<Record<string, DeliveryInfo>>({});
+  const [breakdowns, setBreakdowns] = useState<Record<string, PriceBreakdown>>({});
+  const [expandedDelivery, setExpandedDelivery] = useState<string | null>(null);
+  const [expandedBreakdown, setExpandedBreakdown] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [paying, setPaying] = useState<string | null>(null);
-  const [expandedDelivery, setExpandedDelivery] = useState<string | null>(null);
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
   const [editForm, setEditForm] = useState({
     food_item: "",
@@ -82,12 +108,24 @@ export default function OrdersPage() {
   useEffect(() => {
     if (!isLoggedIn()) { router.push("/login"); return; }
     const user = getUser();
-    const endpoint = user?.role === "admin" ? "/orders/" : `/search/orders?customer_id=${user?.id}`;
+    const endpoint = user?.role === "admin" ? "/orders/" : `/search/orders?customer_id=${user?.id}&page_size=100`;
     api.get(endpoint)
       .then(({ data }) => {
-        const orderList: Order[] = data.data ?? data;
+        const raw: Order[] = data.data ?? data;
+        const orderList = [...raw].reverse();
         setOrders(orderList);
         orderList.forEach((o) => {
+          if (!o.order_time || !o.food_item) {
+            api.get(`/orders/${o.order_id}`)
+              .then(({ data: full }) => {
+                setOrders((prev) => prev.map((x) =>
+                  x.order_id === o.order_id
+                    ? { ...x, order_time: full.order_time ?? x.order_time, food_item: full.food_item ?? x.food_item }
+                    : x
+                ));
+              })
+              .catch(() => {});
+          }
           api.get(`/payments/order/${o.order_id}`)
             .then(({ data: p }) => {
               if (p) setPayments((prev) => ({ ...prev, [o.order_id]: p }));
@@ -97,7 +135,6 @@ export default function OrdersPage() {
       })
       .finally(() => setLoading(false));
 
-    // Load existing favourites for customers
     if (user?.role === "customer") {
       api.get("/favourites/")
         .then(({ data: favs }) => {
@@ -122,13 +159,33 @@ export default function OrdersPage() {
     }
   }
 
+  async function toggleBreakdown(orderId: string) {
+    if (expandedBreakdown === orderId) {
+      setExpandedBreakdown(null);
+      return;
+    }
+    setExpandedBreakdown(orderId);
+    if (!breakdowns[orderId]) {
+      try {
+        const { data } = await api.get(`/pricing/orders/${orderId}/breakdown`);
+        setBreakdowns((prev) => ({ ...prev, [orderId]: data }));
+      } catch {
+        // breakdown not available for this order
+      }
+    }
+  }
+
   async function cancelOrder(id: string) {
-    const user = getUser();
     try {
-      await api.delete(`/orders/${id}/cancel`, { params: { customer_id: user?.id } });
+      await api.delete(`/orders/${id}/cancel`);
       setOrders((prev) =>
         prev.map((o) => o.order_id === id ? { ...o, order_status: "Cancelled" } : o)
       );
+      api.get(`/payments/order/${id}`)
+        .then(({ data: p }) => {
+          if (p) setPayments((prev) => ({ ...prev, [id]: p }));
+        })
+        .catch(() => {});
       window.dispatchEvent(new Event("notifications-refresh"));
     } catch {
       // silently fail
@@ -176,8 +233,7 @@ export default function OrdersPage() {
       );
       setEditingOrder(null);
     } catch (err: unknown) {
-      const msg =
-        (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
       setEditError(typeof msg === "string" ? msg : "Failed to update order.");
     } finally {
       setSaving(false);
@@ -211,15 +267,8 @@ export default function OrdersPage() {
     <div className="max-w-4xl mx-auto px-4 py-8">
       <h1 className="text-2xl font-bold mb-6">My Orders</h1>
 
-      {/* Favourite Message */}
       {favouriteMessage && (
-        <div
-          className={`mb-4 p-3 rounded-lg text-sm ${
-            favouriteMessage.type === "success"
-              ? "bg-green-50 border border-green-200 text-green-700"
-              : "bg-red-50 border border-red-200 text-red-700"
-          }`}
-        >
+        <div className={`mb-4 p-3 rounded-lg text-sm ${favouriteMessage.type === "success" ? "bg-green-50 border border-green-200 text-green-700" : "bg-red-50 border border-red-200 text-red-700"}`}>
           {favouriteMessage.text}
         </div>
       )}
@@ -230,86 +279,46 @@ export default function OrdersPage() {
           <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
             <h2 className="text-lg font-bold mb-4">Edit Order</h2>
             <p className="text-xs text-gray-400 mb-4">#{editingOrder.order_id.slice(0, 8)} — Only orders in &quot;Placed&quot; status can be edited.</p>
-
             {editError && (
-              <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
-                {editError}
-              </div>
+              <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-sm">{editError}</div>
             )}
-
             <div className="space-y-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Food Item</label>
-                <Input
-                  value={editForm.food_item}
-                  onChange={(e) => setEditForm((f) => ({ ...f, food_item: e.target.value }))}
-                />
+                <Input value={editForm.food_item} onChange={(e) => setEditForm((f) => ({ ...f, food_item: e.target.value }))} />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Order Value ($)</label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0.01"
-                  value={editForm.order_value}
-                  onChange={(e) => setEditForm((f) => ({ ...f, order_value: parseFloat(e.target.value) || 0 }))}
-                />
+                <Input type="number" step="0.01" min="0.01" value={editForm.order_value} onChange={(e) => setEditForm((f) => ({ ...f, order_value: parseFloat(e.target.value) || 0 }))} />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Delivery Distance (km, 2.0–15.0)</label>
-                <Input
-                  type="number"
-                  step="0.1"
-                  min="2.0"
-                  max="15.0"
-                  value={editForm.delivery_distance}
-                  onChange={(e) => setEditForm((f) => ({ ...f, delivery_distance: parseFloat(e.target.value) || 2.0 }))}
-                />
+                <Input type="number" step="0.1" min="2.0" max="15.0" value={editForm.delivery_distance} onChange={(e) => setEditForm((f) => ({ ...f, delivery_distance: parseFloat(e.target.value) || 2.0 }))} />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Delivery Method</label>
-                <select
-                  className="w-full border rounded-md px-3 py-2 text-sm"
-                  value={editForm.delivery_method}
-                  onChange={(e) => setEditForm((f) => ({ ...f, delivery_method: e.target.value }))}
-                >
+                <select className="w-full border rounded-md px-3 py-2 text-sm" value={editForm.delivery_method} onChange={(e) => setEditForm((f) => ({ ...f, delivery_method: e.target.value }))}>
                   {DELIVERY_METHODS.map((m) => <option key={m} value={m}>{m}</option>)}
                 </select>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Traffic</label>
-                  <select
-                    className="w-full border rounded-md px-3 py-2 text-sm"
-                    value={editForm.traffic_condition}
-                    onChange={(e) => setEditForm((f) => ({ ...f, traffic_condition: e.target.value }))}
-                  >
+                  <select className="w-full border rounded-md px-3 py-2 text-sm" value={editForm.traffic_condition} onChange={(e) => setEditForm((f) => ({ ...f, traffic_condition: e.target.value }))}>
                     {TRAFFIC_CONDITIONS.map((t) => <option key={t} value={t}>{t}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Weather</label>
-                  <select
-                    className="w-full border rounded-md px-3 py-2 text-sm"
-                    value={editForm.weather_condition}
-                    onChange={(e) => setEditForm((f) => ({ ...f, weather_condition: e.target.value }))}
-                  >
+                  <select className="w-full border rounded-md px-3 py-2 text-sm" value={editForm.weather_condition} onChange={(e) => setEditForm((f) => ({ ...f, weather_condition: e.target.value }))}>
                     {WEATHER_CONDITIONS.map((w) => <option key={w} value={w}>{w}</option>)}
                   </select>
                 </div>
               </div>
             </div>
-
             <div className="flex justify-end gap-2 mt-6">
-              <Button variant="outline" size="sm" onClick={() => setEditingOrder(null)}>
-                Cancel
-              </Button>
-              <Button
-                size="sm"
-                className="bg-orange-500 hover:bg-orange-600 text-white"
-                disabled={saving}
-                onClick={saveEdit}
-              >
+              <Button variant="outline" size="sm" onClick={() => setEditingOrder(null)}>Cancel</Button>
+              <Button size="sm" className="bg-orange-500 hover:bg-orange-600 text-white" disabled={saving} onClick={saveEdit}>
                 {saving ? "Saving…" : "Save Changes"}
               </Button>
             </div>
@@ -328,7 +337,9 @@ export default function OrdersPage() {
             const canCancel = o.order_status === "Placed" || o.order_status === "Paid";
             const canEdit = o.order_status === "Placed" && isCustomer;
             const delivery = deliveryInfos[o.order_id];
-            const isExpanded = expandedDelivery === o.order_id;
+            const breakdown = breakdowns[o.order_id];
+            const deliveryExpanded = expandedDelivery === o.order_id;
+            const breakdownExpanded = expandedBreakdown === o.order_id;
             return (
               <Card key={o.order_id}>
                 <CardHeader className="pb-2 flex flex-row items-center justify-between">
@@ -337,8 +348,8 @@ export default function OrdersPage() {
                   </CardTitle>
                   <div className="flex items-center gap-1.5">
                     {payment && (
-                      <span className={`text-xs px-2 py-1 rounded-full font-medium ${payment.status === "completed" ? "bg-green-100 text-green-700" : payment.status === "failed" ? "bg-red-100 text-red-700" : "bg-yellow-100 text-yellow-700"}`}>
-                        {payment.status === "completed" ? "Paid" : payment.status === "failed" ? "Payment failed" : "Payment pending"}
+                      <span className={`text-xs px-2 py-1 rounded-full font-medium ${PAYMENT_COLORS[payment.status] ?? "bg-gray-100 text-gray-600"}`}>
+                        {PAYMENT_LABELS[payment.status] ?? payment.status}
                       </span>
                     )}
                     <span className={`text-xs px-2 py-1 rounded-full font-medium ${STATUS_COLORS[o.order_status] ?? "bg-gray-100 text-gray-600"}`}>
@@ -349,102 +360,101 @@ export default function OrdersPage() {
                 <CardContent className="text-sm space-y-1">
                   <p className="font-medium">{o.food_item}</p>
                   <p className="text-gray-500">Restaurant #{o.restaurant_id} · ${o.order_value?.toFixed(2)}</p>
-                  <div className="flex gap-2 text-xs text-gray-400">
-                    <span>{o.delivery_method}</span>
-                    <span>·</span>
-                    <span>{o.delivery_distance} km</span>
-                    <span>·</span>
-                    <span>{o.traffic_condition} traffic</span>
-                    <span>·</span>
-                    <span>{o.weather_condition}</span>
+                  {o.delivery_method && (
+                    <div className="flex gap-2 text-xs text-gray-400">
+                      <span>{o.delivery_method}</span>
+                      <span>·</span>
+                      <span>{o.delivery_distance} km</span>
+                      <span>·</span>
+                      <span>{o.traffic_condition} traffic</span>
+                      <span>·</span>
+                      <span>{o.weather_condition}</span>
+                    </div>
+                  )}
+                  {o.order_time && !isNaN(new Date(o.order_time).getTime()) && (
+                    <p className="text-gray-400 text-xs">{new Date(o.order_time).toLocaleString()}</p>
+                  )}
+
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {!payment && o.order_status !== "Cancelled" && (
+                      <Button size="sm" className="bg-orange-500 hover:bg-orange-600 text-white" disabled={paying === o.order_id} onClick={() => payOrder(o)}>
+                        {paying === o.order_id ? "Processing…" : "Pay now"}
+                      </Button>
+                    )}
+                    {canEdit && (
+                      <Button size="sm" variant="outline" onClick={() => startEdit(o)}>Edit</Button>
+                    )}
+                    {canCancel && isCustomer && (
+                      <Button size="sm" variant="destructive" onClick={() => cancelOrder(o.order_id)}>Cancel</Button>
+                    )}
+                    {o.order_status !== "Cancelled" && (
+                      <Button size="sm" variant="outline" onClick={() => fetchDeliveryInfo(o.order_id)}>
+                        {deliveryExpanded ? "Hide delivery" : "Delivery details"}
+                      </Button>
+                    )}
+                    {o.order_status !== "Cancelled" && (
+                      <Button size="sm" variant="outline" onClick={() => toggleBreakdown(o.order_id)}>
+                        {breakdownExpanded ? "Hide breakdown" : "Price breakdown"}
+                      </Button>
+                    )}
+                    {isCustomer && o.order_status !== "Cancelled" && (
+                      savedFavourites.has(o.order_id) ? (
+                        <Button size="sm" variant="outline" disabled className="text-orange-500 border-orange-300">
+                          ❤️ Saved
+                        </Button>
+                      ) : (
+                        <Button size="sm" variant="outline" disabled={savingFavourite === o.order_id} onClick={() => saveToFavourites(o.order_id)}>
+                          {savingFavourite === o.order_id ? "Saving…" : "♡ Save"}
+                        </Button>
+                      )
+                    )}
                   </div>
-                  <p className="text-gray-400 text-xs">{new Date(o.order_time).toLocaleString()}</p>
 
-                  {/* Delivery Details Toggle */}
-                  <button
-                    className="text-xs text-orange-500 hover:underline mt-1"
-                    onClick={() => fetchDeliveryInfo(o.order_id)}
-                  >
-                    {isExpanded ? "Hide delivery details" : "View delivery details"}
-                  </button>
-
-                  {isExpanded && delivery && (
+                  {/* Delivery Details Panel */}
+                  {deliveryExpanded && delivery && (
                     <div className="mt-2 p-3 bg-gray-50 border rounded text-xs space-y-1">
                       <p className="font-medium text-gray-700">Delivery Details</p>
                       <p>Distance: {delivery.delivery_distance} km</p>
                       {delivery.delivery_method && <p>Method: {delivery.delivery_method}</p>}
                       {delivery.traffic_condition && <p>Traffic: {delivery.traffic_condition}</p>}
                       {delivery.weather_condition && <p>Weather: {delivery.weather_condition}</p>}
-                      {delivery.delivery_time != null && (
-                        <p>Delivery Time: {delivery.delivery_time.toFixed(1)} min</p>
-                      )}
+                      {delivery.delivery_time != null && <p>Delivery Time: {delivery.delivery_time.toFixed(1)} min</p>}
                       {delivery.delivery_delay != null && (
                         <p className={delivery.delivery_delay > 0 ? "text-red-600" : "text-green-600"}>
                           Delay: {delivery.delivery_delay > 0 ? "+" : ""}{delivery.delivery_delay.toFixed(1)} min
                         </p>
                       )}
-                      <p className="text-gray-400">
-                        {delivery.is_historical ? "Historical (Kaggle)" : "System order"}
-                      </p>
+                      <p className="text-gray-400">{delivery.is_historical ? "Historical (Kaggle)" : "System order"}</p>
                     </div>
                   )}
 
-                  {payment ? (
-                    <p className={`text-xs font-medium mt-1 ${PAYMENT_COLORS[payment.status] ?? "text-gray-500"}`}>
-                      Payment: {payment.status} · ${payment.amount?.toFixed(2)}
-                    </p>
-                  ) : o.order_status !== "Cancelled" && (
-                    <Button
-                      size="sm"
-                      className="mt-2 bg-orange-500 hover:bg-orange-600 text-white"
-                      disabled={paying === o.order_id}
-                      onClick={() => payOrder(o)}
-                    >
-                      {paying === o.order_id ? "Processing…" : "Pay now"}
-                    </Button>
+                  {/* Price Breakdown Panel */}
+                  {breakdownExpanded && (
+                    <div className="mt-3 p-3 bg-gray-50 rounded-md text-xs space-y-1 border">
+                      {breakdown ? (
+                        <>
+                          <p className="font-semibold text-gray-700 mb-2">Price Breakdown</p>
+                          <div className="flex justify-between"><span className="text-gray-500">Food price</span><span>${breakdown.food_price?.toFixed(2)}</span></div>
+                          <div className="flex justify-between"><span className="text-gray-500">Base delivery fee</span><span>${breakdown.delivery_fee?.base_fee?.toFixed(2)}</span></div>
+                          <div className="flex justify-between"><span className="text-gray-500">Distance fee</span><span>${breakdown.delivery_fee?.distance_fee?.toFixed(2)}</span></div>
+                          <div className="flex justify-between"><span className="text-gray-500">Weather surcharge</span><span>${breakdown.delivery_fee?.weather_surcharge?.toFixed(2)}</span></div>
+                          <div className="flex justify-between"><span className="text-gray-500">Traffic surcharge</span><span>${breakdown.delivery_fee?.traffic_surcharge?.toFixed(2)}</span></div>
+                          <div className="flex justify-between"><span className="text-gray-500">Subtotal</span><span>${breakdown.subtotal?.toFixed(2)}</span></div>
+                          <div className="flex justify-between"><span className="text-gray-500">Tax</span><span>${breakdown.tax?.toFixed(2)}</span></div>
+                          <div className="flex justify-between font-semibold border-t pt-1 mt-1"><span>Total</span><span>${breakdown.total?.toFixed(2)}</span></div>
+                        </>
+                      ) : (
+                        <p className="text-gray-400">Loading breakdown…</p>
+                      )}
+                    </div>
                   )}
 
-                  <div className="flex gap-2 mt-2">
-                    {canEdit && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => startEdit(o)}
-                      >
-                        Edit
-                      </Button>
-                    )}
-                    {canCancel && isCustomer && (
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => cancelOrder(o.order_id)}
-                      >
-                        Cancel
-                      </Button>
-                    )}
-                    {isCustomer && o.order_status !== "Cancelled" && (
-                      savedFavourites.has(o.order_id) ? (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          disabled
-                          className="text-orange-500 border-orange-300"
-                        >
-                          ❤️ Saved
-                        </Button>
-                      ) : (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          disabled={savingFavourite === o.order_id}
-                          onClick={() => saveToFavourites(o.order_id)}
-                        >
-                          {savingFavourite === o.order_id ? "Saving…" : "♡ Save"}
-                        </Button>
-                      )
-                    )}
-                  </div>
+                  {/* Refund notice */}
+                  {payment?.status === "Refunded" && (
+                    <p className="text-xs text-purple-600 font-medium mt-1">
+                      Refund of ${payment.amount?.toFixed(2)} processed after cancellation.
+                    </p>
+                  )}
                 </CardContent>
               </Card>
             );

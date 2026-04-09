@@ -352,6 +352,34 @@ class SearchService:
                 }
             )
 
+        # Also include system orders from orders.json (ensures newly placed orders appear)
+        if _DEFAULT_SYSTEM_ORDERS_FILE.exists():
+            system_orders = json.loads(
+                _DEFAULT_SYSTEM_ORDERS_FILE.read_text(encoding="utf-8")
+            )
+            for r in system_orders:
+                orders.append(
+                    {
+                        "order_id": str(r.get("order_id") or ""),
+                        "customer_id": str(r.get("customer_id") or ""),
+                        "restaurant_id": str(r.get("restaurant_id") or ""),
+                        "order_status": r.get("order_status") or "",
+                        "order_value": _to_float(r.get("order_value")),
+                        "food_item": r.get("food_item") or "",
+                        "order_time": r.get("order_time") or "",
+                    }
+                )
+
+        # Deduplicate by order_id (system orders may appear in both sources)
+        seen_ids: set[str] = set()
+        deduped: list[dict] = []
+        for o in orders:
+            oid = o.get("order_id", "")
+            if oid and oid not in seen_ids:
+                seen_ids.add(oid)
+                deduped.append(o)
+        orders = deduped
+
         out = orders
 
         if filters.order_id:

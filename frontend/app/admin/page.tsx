@@ -122,6 +122,7 @@ export default function AdminPage() {
   const [outcomeForm, setOutcomeForm] = useState({ actual_delivery_time: "", delivery_delay: "" });
   const [outcomeError, setOutcomeError] = useState("");
   const [savingOutcome, setSavingOutcome] = useState(false);
+  const [refundedPayments, setRefundedPayments] = useState<Payment[]>([]);
 
   useEffect(() => {
     if (!isLoggedIn()) { router.push("/login"); return; }
@@ -137,6 +138,7 @@ export default function AdminPage() {
       api.get("/admin/inspect/deliveries").then(({ data }) => setDeliveries(data)).catch(() => {}),
       api.get("/delivery/analytics").then(({ data }) => setDeliveryAnalytics(data)).catch(() => {}),
       api.get("/orders/admin/cancelled").then(({ data }) => setCancelledOrders(data)).catch(() => {}),
+      api.get("/payments/admin/refunds").then(({ data }) => setRefundedPayments(data)).catch(() => {}),
     ]).finally(() => setLoading(false));
   }, [router]);
 
@@ -319,6 +321,7 @@ export default function AdminPage() {
           <TabsTrigger value="restaurants">Restaurants</TabsTrigger>
           <TabsTrigger value="orders">Orders</TabsTrigger>
           <TabsTrigger value="cancelled">Cancelled Orders</TabsTrigger>
+          <TabsTrigger value="refunds">Refunded Payments</TabsTrigger>
           <TabsTrigger value="payments">Payments</TabsTrigger>
           <TabsTrigger value="reviews">Reviews</TabsTrigger>
           <TabsTrigger value="deliveries">Deliveries</TabsTrigger>
@@ -548,6 +551,53 @@ export default function AdminPage() {
                     <TableRow>
                       <TableCell colSpan={6} className="text-center text-gray-400">
                         No cancelled orders found.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ── Refunded Payments Tab (Feat11) ── */}
+        <TabsContent value="refunds">
+          <Card>
+            <CardContent className="pt-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-semibold text-gray-700">Refunded Payments</h3>
+                <Badge variant="outline" className="text-purple-600 border-purple-300">
+                  {refundedPayments.length} refunded
+                </Badge>
+              </div>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Payment ID</TableHead>
+                    <TableHead>Order ID</TableHead>
+                    <TableHead>Customer</TableHead>
+                    <TableHead>Amount</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {refundedPayments.map((p) => (
+                    <TableRow key={p.payment_id}>
+                      <TableCell className="text-xs font-mono">{p.payment_id.slice(0, 8)}</TableCell>
+                      <TableCell className="text-xs font-mono">{p.order_id.slice(0, 8)}</TableCell>
+                      <TableCell className="text-xs font-mono">{p.customer_id.slice(0, 8)}</TableCell>
+                      <TableCell>${p.amount?.toFixed(2)}</TableCell>
+                      <TableCell>
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                          Refunded
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {refundedPayments.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center text-gray-400">
+                        No refunded payments found.
                       </TableCell>
                     </TableRow>
                   )}
