@@ -44,6 +44,11 @@ export default function RestaurantDetailPage() {
   }
 
   useEffect(() => {
+    const user = getUser();
+    if (user?.role === "owner" || user?.role === "admin") {
+      router.replace("/");
+      return;
+    }
     // Load all items once to extract unique categories
     api.get("/search/menu-items", { params: { restaurant_id: id, page_size: 100 } })
       .then(({ data }) => {

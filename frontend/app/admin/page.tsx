@@ -116,6 +116,12 @@ export default function AdminPage() {
   const [menuItems, setMenuItems] = useState<{ food_item: string; median_price: number }[]>([]);
   const [menuLoading, setMenuLoading] = useState(false);
   const [cancelledOrders, setCancelledOrders] = useState<Order[]>([]);
+  const [analyticsTraffic, setAnalyticsTraffic] = useState<string>("");
+  const [analyticsWeather, setAnalyticsWeather] = useState<string>("");
+  const [outcomeOrderId, setOutcomeOrderId] = useState<string | null>(null);
+  const [outcomeForm, setOutcomeForm] = useState({ actual_delivery_time: "", delivery_delay: "" });
+  const [outcomeError, setOutcomeError] = useState("");
+  const [savingOutcome, setSavingOutcome] = useState(false);
   const [refundedPayments, setRefundedPayments] = useState<Payment[]>([]);
 
   useEffect(() => {
@@ -158,6 +164,64 @@ export default function AdminPage() {
       setMenuItems([]);
     } finally {
       setMenuLoading(false);
+    }
+  }
+
+  async function fetchFilteredAnalytics(traffic: string, weather: string) {
+    const params: Record<string, string> = {};
+    if (traffic) params.traffic_condition = traffic;
+    if (weather) params.weather_condition = weather;
+    try {
+      const { data } = await api.get("/delivery/analytics", { params });
+      setDeliveryAnalytics(data);
+    } catch {
+      // silently fail
+    }
+  }
+
+  function handleTrafficFilter(value: string) {
+    setAnalyticsTraffic(value);
+    fetchFilteredAnalytics(value, analyticsWeather);
+  }
+
+  function handleWeatherFilter(value: string) {
+    setAnalyticsWeather(value);
+    fetchFilteredAnalytics(analyticsTraffic, value);
+  }
+
+  function startOutcome(orderId: string) {
+    setOutcomeOrderId(orderId);
+    setOutcomeForm({ actual_delivery_time: "", delivery_delay: "" });
+    setOutcomeError("");
+  }
+
+  async function saveOutcome() {
+    if (!outcomeOrderId) return;
+    const time = parseFloat(outcomeForm.actual_delivery_time);
+    const delay = parseFloat(outcomeForm.delivery_delay);
+    if (isNaN(time) || time <= 0) { setOutcomeError("Delivery time must be positive."); return; }
+    if (isNaN(delay)) { setOutcomeError("Delay must be a number."); return; }
+    setSavingOutcome(true);
+    setOutcomeError("");
+    try {
+      await api.patch(`/delivery/${outcomeOrderId}/outcome`, {
+        actual_delivery_time: time,
+        delivery_delay: delay,
+      });
+      setDeliveries((prev) =>
+        prev.map((d) =>
+          d.order_id === outcomeOrderId
+            ? { ...d, delivery_time: time, delivery_delay: delay }
+            : d
+        )
+      );
+      setOutcomeOrderId(null);
+    } catch (err: unknown) {
+      const msg =
+        (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      setOutcomeError(typeof msg === "string" ? msg : "Failed to record outcome.");
+    } finally {
+      setSavingOutcome(false);
     }
   }
 
@@ -653,6 +717,39 @@ export default function AdminPage() {
 
         {/* ── Deliveries Tab ── */}
         <TabsContent value="deliveries">
+          {/* Analytics filters */}
+          <div className="flex items-center gap-3 mb-4">
+            <label className="text-sm font-medium text-gray-600">Filter analytics:</label>
+            <select
+              className="border rounded-md px-3 py-1.5 text-sm"
+              value={analyticsTraffic}
+              onChange={(e) => handleTrafficFilter(e.target.value)}
+            >
+              <option value="">All Traffic</option>
+              <option value="Low">Low</option>
+              <option value="Medium">Medium</option>
+              <option value="High">High</option>
+            </select>
+            <select
+              className="border rounded-md px-3 py-1.5 text-sm"
+              value={analyticsWeather}
+              onChange={(e) => handleWeatherFilter(e.target.value)}
+            >
+              <option value="">All Weather</option>
+              <option value="Sunny">Sunny</option>
+              <option value="Rainy">Rainy</option>
+              <option value="Snowy">Snowy</option>
+            </select>
+            {(analyticsTraffic || analyticsWeather) && (
+              <button
+                className="text-xs text-orange-500 hover:underline"
+                onClick={() => { setAnalyticsTraffic(""); setAnalyticsWeather(""); fetchFilteredAnalytics("", ""); }}
+              >
+                Clear filters
+              </button>
+            )}
+          </div>
+
           {/* Analytics summary */}
           {deliveryAnalytics && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
@@ -687,6 +784,45 @@ export default function AdminPage() {
             </div>
           )}
 
+          {/* Outcome Recording Modal */}
+          {outcomeOrderId && (
+            <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+              <div className="bg-white rounded-lg shadow-xl w-full max-w-sm p-6">
+                <h2 className="text-lg font-bold mb-2">Record Delivery Outcome</h2>
+                <p className="text-xs text-gray-400 mb-4">Order #{outcomeOrderId.slice(0, 8)}</p>
+                {outcomeError && (
+                  <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
+                    {outcomeError}
+                  </div>
+                )}
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Actual Delivery Time (min)</label>
+                    <input type="number" step="0.1" min="0.1" placeholder="e.g. 25.5"
+                      className="w-full border rounded-md px-3 py-2 text-sm"
+                      value={outcomeForm.actual_delivery_time}
+                      onChange={(e) => setOutcomeForm((f) => ({ ...f, actual_delivery_time: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Delay (min, 0 = on time)</label>
+                    <input type="number" step="0.1" placeholder="e.g. 3.0"
+                      className="w-full border rounded-md px-3 py-2 text-sm"
+                      value={outcomeForm.delivery_delay}
+                      onChange={(e) => setOutcomeForm((f) => ({ ...f, delivery_delay: e.target.value }))}
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2 mt-6">
+                  <Button variant="outline" size="sm" onClick={() => setOutcomeOrderId(null)}>Cancel</Button>
+                  <Button size="sm" className="bg-orange-500 hover:bg-orange-600 text-white" disabled={savingOutcome} onClick={saveOutcome}>
+                    {savingOutcome ? "Saving…" : "Save Outcome"}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
           <Card>
             <CardContent className="pt-4">
               <Table>
@@ -700,45 +836,58 @@ export default function AdminPage() {
                     <TableHead>Time</TableHead>
                     <TableHead>Delay</TableHead>
                     <TableHead>Type</TableHead>
+                    <TableHead>Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {deliveries.map((d) => (
-                    <TableRow key={d.order_id}>
-                      <TableCell className="text-xs font-mono">
-                        {d.order_id.length > 8 ? d.order_id.slice(0, 8) : d.order_id}
-                      </TableCell>
-                      <TableCell>{d.delivery_distance.toFixed(1)} km</TableCell>
-                      <TableCell>{d.delivery_method ?? "—"}</TableCell>
-                      <TableCell>{d.traffic_condition ?? "—"}</TableCell>
-                      <TableCell>{d.weather_condition ?? "—"}</TableCell>
-                      <TableCell>
-                        {d.delivery_time != null ? `${d.delivery_time.toFixed(0)} min` : "—"}
-                      </TableCell>
-                      <TableCell>
-                        {d.delivery_delay != null ? (
-                          <span
-                            className={
-                              d.delivery_delay > 0 ? "text-red-600" : "text-green-600"
-                            }
-                          >
-                            {d.delivery_delay > 0 ? "+" : ""}
-                            {d.delivery_delay.toFixed(0)} min
-                          </span>
-                        ) : (
-                          "—"
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="text-xs">
-                          {d.is_historical ? "Historical" : "System"}
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {deliveries.map((d) => {
+                    const order = orders.find((o) => o.order_id === d.order_id);
+                    const isDelivered = order?.order_status === "Delivered";
+                    const hasOutcome = d.delivery_time != null;
+                    return (
+                      <TableRow key={d.order_id}>
+                        <TableCell className="text-xs font-mono">
+                          {d.order_id.length > 8 ? d.order_id.slice(0, 8) : d.order_id}
+                        </TableCell>
+                        <TableCell>{d.delivery_distance.toFixed(1)} km</TableCell>
+                        <TableCell>{d.delivery_method ?? "—"}</TableCell>
+                        <TableCell>{d.traffic_condition ?? "—"}</TableCell>
+                        <TableCell>{d.weather_condition ?? "—"}</TableCell>
+                        <TableCell>
+                          {d.delivery_time != null ? `${d.delivery_time.toFixed(0)} min` : "—"}
+                        </TableCell>
+                        <TableCell>
+                          {d.delivery_delay != null ? (
+                            <span
+                              className={
+                                d.delivery_delay > 0 ? "text-red-600" : "text-green-600"
+                              }
+                            >
+                              {d.delivery_delay > 0 ? "+" : ""}
+                              {d.delivery_delay.toFixed(0)} min
+                            </span>
+                          ) : (
+                            "—"
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="text-xs">
+                            {d.is_historical ? "Historical" : "System"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {!d.is_historical && isDelivered && !hasOutcome && (
+                            <Button size="sm" variant="outline" onClick={() => startOutcome(d.order_id)}>
+                              Record Outcome
+                            </Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                   {deliveries.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center text-gray-400">
+                      <TableCell colSpan={9} className="text-center text-gray-400">
                         No delivery records found.
                       </TableCell>
                     </TableRow>

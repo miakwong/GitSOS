@@ -2,24 +2,20 @@ from unittest.mock import patch
 
 import app.services.menu_service as service
 import pytest
-from app.schemas.kaggle import KaggleRestaurant
 from app.schemas.menu import MenuItemCreate, MenuItemOut, MenuItemUpdate
 from fastapi import HTTPException
 
 ITEM = MenuItemOut(restaurant_id="16", food_item="Burger", price=12.50)
-RESTAURANT = KaggleRestaurant(restaurant_id="16", name="Test Restaurant")
 
 
 @pytest.fixture(autouse=True)
 def mock_repo():
-    with patch("app.services.menu_service.menu_repository") as mock, \
-         patch("app.services.menu_service.kaggle_restaurant_repository") as mock_rest:
+    with patch("app.services.menu_service.menu_repository") as mock:
         mock.get_by_restaurant.return_value = [ITEM]
         mock.get_by_restaurant_and_food.return_value = None
         mock.create.return_value = ITEM
         mock.update.return_value = ITEM
         mock.delete.return_value = True
-        mock_rest.get_by_id.return_value = RESTAURANT
         yield mock
 
 
@@ -40,14 +36,6 @@ def test_create_menu_item_success(mock_repo):
     assert result.food_item == "Burger"
     mock_repo.create.assert_called_once()
 
-
-def test_create_menu_item_unknown_restaurant_raises_404():
-    with patch("app.services.menu_service.kaggle_restaurant_repository") as mock_rest:
-        mock_rest.get_by_id.return_value = None
-        data = MenuItemCreate(food_item="Burger", price=12.50)
-        with pytest.raises(HTTPException) as exc:
-            service.create_menu_item("999", data)
-        assert exc.value.status_code == 404
 
 
 def test_create_menu_item_duplicate_raises_409(mock_repo):

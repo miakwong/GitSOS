@@ -1,14 +1,13 @@
+# repositories/kaggle_order_repository.py
+# Read-only adapter for Kaggle food delivery CSV
+
 import csv
 import os
-import statistics
 from typing import Optional
 
 from app.schemas.kaggle import KaggleOrder
 
 CSV_PATH = os.path.join(os.path.dirname(__file__), "../data/food_delivery.csv")
-
-# Default food price when item is not found in Kaggle data at all
-DEFAULT_FOOD_PRICE = 25.00
 
 
 def _load_csv() -> list[dict]:
@@ -51,35 +50,37 @@ def get_by_food_item(food_item: str) -> list[KaggleOrder]:
     return [_row_to_order(row) for row in _load_csv() if row["food_item"] == food_item]
 
 
-def get_median_price(restaurant_id: int, food_item: str) -> float:
-    """
-    Get the food base price using a 3-tier fallback strategy:
+def _median(prices: list[float]) -> float:
+    n = len(prices)
+    mid = n // 2
+    if n % 2 == 0:
+        return (prices[mid - 1] + prices[mid]) / 2
+    return prices[mid]
 
-    Level 1 Primary: Median order_value for this exact restaurant_id, food_item pair
-    Level 2 Fallback: Global median order_value for food_item across ALL restaurants
-    Level 3 Default:  $25.00 if the food item is not found anywhere in Kaggle data
+
+def get_median_price(restaurant_id: int, food_item: str) -> float:
+    """Three-tier price fallback:
+    1. Median price for this food_item at this restaurant.
+    2. Global median for this food_item across all restaurants.
+    3. Default $25.00 if food_item not in Kaggle at all.
     """
     rows = _load_csv()
 
-    # --- Lv. 1: Look for prices from this specific restaurant + food item ---
-    specific_prices = [
-        float(row["order_value"])
-        for row in rows
-        if str(row["restaurant_id"]) == str(restaurant_id) and row["food_item"] == food_item
-    ]
+    # Tier 1: exact restaurant + food_item match
+    exact = sorted(
+        float(r["order_value"])
+        for r in rows
+        if r.get("food_item") == food_item and r.get("restaurant_id") == str(restaurant_id)
+    )
+    if exact:
+        return _median(exact)
 
-    if specific_prices:
-        return round(statistics.median(specific_prices), 2)
-
-    # --- Lv. 2: Look for prices of this food item across ALL restaurants ---
-    global_prices = [
-        float(row["order_value"])
-        for row in rows
-        if row["food_item"] == food_item
-    ]
-
+    # Tier 2: global food_item median
+    global_prices = sorted(
+        float(r["order_value"]) for r in rows if r.get("food_item") == food_item
+    )
     if global_prices:
-        return round(statistics.median(global_prices), 2)
+        return _median(global_prices)
 
-    # --- Lv. 3: Food item not in Kaggle at all, use default price ---
-    return DEFAULT_FOOD_PRICE
+    # Tier 3: default
+    return 25.00

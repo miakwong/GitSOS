@@ -13,6 +13,7 @@ export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState("customer");
+  const [restaurantId, setRestaurantId] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -21,7 +22,20 @@ export default function RegisterPage() {
     setError("");
     setLoading(true);
     try {
-      await api.post("/auth/register", { email, password, role });
+      const payload: { email: string; password: string; role: string; restaurant_id?: number } = {
+        email,
+        password,
+        role,
+      };
+      if (role === "owner") {
+        if (!restaurantId) {
+          setError("Restaurant ID is required for owner accounts.");
+          setLoading(false);
+          return;
+        }
+        payload.restaurant_id = parseInt(restaurantId, 10);
+      }
+      await api.post("/auth/register", payload);
       router.push("/login");
     } catch (err: unknown) {
       const msg =
@@ -63,6 +77,15 @@ export default function RegisterPage() {
               <option value="customer">Customer</option>
               <option value="owner">Restaurant Owner</option>
             </select>
+            {role === "owner" && (
+              <Input
+                type="number"
+                placeholder="Restaurant ID"
+                value={restaurantId}
+                onChange={(e) => setRestaurantId(e.target.value)}
+                required
+              />
+            )}
             {error && <p className="text-sm text-red-500">{error}</p>}
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? "Creating…" : "Create account"}
